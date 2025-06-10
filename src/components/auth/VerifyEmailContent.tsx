@@ -55,7 +55,8 @@ export default function VerifyEmailContent() {
       await sendEmailVerification(auth.currentUser);
       toast({
         title: "Verification Email Resent",
-        description: `A new verification email has been sent to ${auth.currentUser.email}.",
+        // ----------->  التعديل هنا: تم حذف علامة الاقتباس الزائدة  <-----------
+        description: `A new verification email has been sent to ${auth.currentUser.email}.`,
       });
     } catch (e) {
       const firebaseError = e as AuthError;
