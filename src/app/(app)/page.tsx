@@ -7,13 +7,15 @@ import { TaskList } from "@/components/tasks/TaskList";
 import { TaskTimer } from "@/components/tasks/TaskTimer";
 import { AIPrioritization } from "@/components/tasks/AIPrioritization";
 import { AIChatTaskGenerator } from "@/components/tasks/AIChatTaskGenerator";
+import { TimelineClock } from "@/components/layout/TimelineClock";
 import type { Task, SubTask, ActiveTimerTarget, TimerSessionType } from "@/lib/types";
 import type { TaskFormData } from "@/components/tasks/TaskForm";
 import { useToast } from "@/hooks/use-toast";
 import { BellRing, CheckCircle, Loader2 } from 'lucide-react';
-import { cn } from "@/lib/utils.tsx";
+import { cn } from "@/lib/utils";
 import { parseISO, format, isValid, addMinutes, isSameDay, startOfDay } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { getTasksForUser, addTask, updateTask, deleteTask } from "@/lib/actions";
 
 const LOCAL_STORAGE_KEY = "taskzenith-tasks";
 const SCHEDULE_FOR_DATE_KEY = "taskzenith-schedule-for-date";
@@ -88,35 +90,19 @@ export default function TasksPage() {
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin');
     else if (status === 'authenticated') {
-      try {
-        const storedTasks = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (storedTasks) {
-          const parsedTasks = JSON.parse(storedTasks).map((task: Task) => ({
-            ...task,
-            createdAt: task.createdAt || new Date().toISOString(),
-            subtasks: (task.subtasks || []).map((st: SubTask) => ({
-              ...st,
-              id: st.id || crypto.randomUUID(),
-              durationMinutes: typeof st.durationMinutes === 'number' ? st.durationMinutes : 25,
-              breakMinutes: typeof st.breakMinutes === 'number' ? st.breakMinutes : 0,
-              scheduledStartTime: st.scheduledStartTime && isValid(parseISO(st.scheduledStartTime)) ? parseISO(st.scheduledStartTime).toISOString() : undefined,
-              actualEndTime: st.actualEndTime && isValid(parseISO(st.actualEndTime)) ? parseISO(st.actualEndTime).toISOString() : undefined,
-              deadline: st.deadline || (st.scheduledStartTime && isValid(parseISO(st.scheduledStartTime)) ? format(parseISO(st.scheduledStartTime), 'yyyy-MM-dd') : undefined),
-              scheduledTime: st.scheduledTime || (st.scheduledStartTime && isValid(parseISO(st.scheduledStartTime)) ? format(parseISO(st.scheduledStartTime), 'HH:mm') : undefined),
-            }))
-          }));
-          setTasks(parsedTasks);
+      const fetchTasks = async () => {
+        if (session?.user?.id) {
+          try {
+            const userTasks = await getTasksForUser(session.user.id);
+            setTasks(userTasks);
+          } catch (error) {
+            console.error("Error fetching tasks:", error);
+          }
         }
-      } catch (e) { console.error("Failed to load tasks from localStorage", e); }
+      };
+      fetchTasks();
     }
   }, [status, router, session]);
-
-  useEffect(() => {
-    if (status === 'authenticated') {
-      try { localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tasks)); } 
-      catch (e) { console.error("Failed to save tasks to localStorage", e); }
-    }
-  }, [tasks, status]);
 
   const handleFormOpenChange = (isOpen: boolean) => {
     setIsFormOpen(isOpen);
@@ -145,177 +131,192 @@ export default function TasksPage() {
     setIsFormOpen(true);
   };
 
-  const processSubTaskFormDates = (subtaskData: any): Partial<SubTask> => {
-    let scheduledStartTime: string | undefined = undefined;
-    if (subtaskData.deadline && subtaskData.scheduledTime) {
-      try {
-        const parsed = parseISO(`${subtaskData.deadline}T${subtaskData.scheduledTime}:00`);
-        if (isValid(parsed)) scheduledStartTime = parsed.toISOString();
-      } catch {}
-    } else if (subtaskData.scheduledTime && !subtaskData.deadline) {
-      try {
-        const today = format(new Date(), 'yyyy-MM-dd');
-        const parsed = parseISO(`${today}T${subtaskData.scheduledTime}:00`);
-        if (isValid(parsed)) scheduledStartTime = parsed.toISOString();
-      } catch {}
+  // تعديل: حفظ مهام الذكاء الاصطناعي في قاعدة البيانات للمستخدم
+  const handleAITasksGenerated = async (newTasksData: TaskFormData[]) => {
+    if (!session?.user?.id) return;
+    for (const taskData of newTasksData) {
+      await addTask(session.user.id, taskData);
     }
-    return { ...subtaskData, scheduledStartTime };
+    const updatedTasks = await getTasksForUser(session.user.id);
+    setTasks(updatedTasks);
+    // Removed localStorage.setItem as data is now persisted to DB and re-fetched
   };
   
-  const handleAITasksGenerated = (newTasksData: TaskFormData[]) => {
-    const tasksToAdd: Task[] = newTasksData.map(taskData => ({
-      id: crypto.randomUUID(),
-      text: taskData.text,
-      priority: taskData.priority,
-      completed: false,
-      createdAt: new Date().toISOString(),
-      subtasks: taskData.subtasks.map(stFormData => {
-        const processedSubTask = processSubTaskFormDates(stFormData);
+  const handleAddTask = async (data: TaskFormData) => {
+    if (!session?.user?.id) return;
+
+    // Ensure proper scheduling for new tasks
+    const currentDate = new Date();
+    const subtasksWithSchedule = data.subtasks.map((subtask, index) => {
+      // Check if deadline AND scheduledTime are missing, then set default schedule
+      if (!subtask.deadline || !subtask.scheduledTime) {
+        // If no schedule, set it to current time plus 30 minutes * index
+        const scheduledTime = addMinutes(currentDate, 30 * (index + 1));
         return {
-          id: stFormData.id || crypto.randomUUID(),
-          text: stFormData.text,
-          completed: false,
-          // --- THIS IS THE FINAL SAFE FALLBACK ---
-          // It uses the value from the AI if it exists (e.g., 30),
-          // otherwise, it provides a safe value for the state.
-          durationMinutes: stFormData.durationMinutes ?? 25,
-          breakMinutes: stFormData.breakMinutes ?? 0,
-          // --- END OF FIX ---
-          scheduledStartTime: processedSubTask.scheduledStartTime,
-          deadline: stFormData.deadline,
-          scheduledTime: stFormData.scheduledTime,
+          ...subtask,
+          scheduledStartTime: scheduledTime.toISOString(),
+          deadline: format(scheduledTime, 'yyyy-MM-dd'),
+          scheduledTime: format(scheduledTime, 'HH:mm'),
         };
-      }),
-    }));
-    setTasks(prevTasks => [...tasksToAdd, ...prevTasks]);
-  };
-  
-  const handleAddTask = (data: TaskFormData) => {
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      text: data.text,
-      priority: data.priority,
-      completed: false,
-      createdAt: new Date().toISOString(),
-      subtasks: data.subtasks.map(stFormData => {
-        const processedSubTask = processSubTaskFormDates(stFormData);
-        return {
-          id: stFormData.id || crypto.randomUUID(),
-          text: stFormData.text,
-          completed: false,
-          durationMinutes: stFormData.durationMinutes ?? 25,
-          breakMinutes: stFormData.breakMinutes ?? 0,
-          scheduledStartTime: processedSubTask.scheduledStartTime,
-          deadline: stFormData.deadline,
-          scheduledTime: stFormData.scheduledTime,
-        };
-      }),
+      }
+      return subtask;
+    });
+
+    const taskDataWithSchedule = {
+      ...data,
+      subtasks: subtasksWithSchedule,
     };
-    setTasks(prevTasks => [newTask, ...prevTasks]);
-    handleFormOpenChange(false);
+
+    try {
+      console.log("Adding task with schedule:", taskDataWithSchedule); // للتحقق
+      const result = await addTask(session.user.id, taskDataWithSchedule);
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setIsFormOpen(false);
+      toast({
+        title: "Success",
+        description: "Task added successfully",
+      });
+      router.refresh(); // Trigger a refresh of the current route
+    } catch (error) {
+      console.error("Error adding task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add task",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleEditTask = (data: TaskFormData) => {
-    if (!editingTask) return;
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === editingTask.id
-          ? {
-            ...task,
-            text: data.text,
-            priority: data.priority,
-            subtasks: data.subtasks.map(stFormData => {
-              const processedSubTask = processSubTaskFormDates(stFormData);
-              const existingSubTask = task.subtasks.find(s => s.id === stFormData.id);
-              return {
-                ...(existingSubTask || {}),
-                id: stFormData.id || crypto.randomUUID(),
-                text: stFormData.text,
-                completed: existingSubTask ? existingSubTask.completed : false,
-                durationMinutes: stFormData.durationMinutes ?? 25,
-                breakMinutes: stFormData.breakMinutes ?? 0,
-                scheduledStartTime: processedSubTask.scheduledStartTime,
-                deadline: stFormData.deadline,
-                scheduledTime: stFormData.scheduledTime,
-              };
-            }),
-          }
-          : task
-      )
-    );
-    handleFormOpenChange(false);
+  const handleEditTask = async (data: TaskFormData) => {
+    if (!session?.user?.id || !editingTask?.id) return;
+
+    const subtasksToUpdate = data.subtasks.map(stFormData => {
+      const existingSubTask = editingTask.subtasks.find(s => s.id === stFormData.id);
+      return {
+        ...(existingSubTask || {}),
+        id: stFormData.id || crypto.randomUUID(),
+        text: stFormData.text,
+        completed: existingSubTask ? existingSubTask.completed : false,
+        durationMinutes: stFormData.durationMinutes ?? 25,
+        breakMinutes: stFormData.breakMinutes ?? 0,
+        scheduledStartTime: ensureValidScheduledStartTime(stFormData),
+        deadline: stFormData.deadline,
+        scheduledTime: stFormData.scheduledTime,
+      };
+    });
+
+    try {
+      await updateTask(session.user.id, editingTask.id, {
+        text: data.text,
+        priority: data.priority,
+        subtasks: subtasksToUpdate,
+        updatedAt: new Date().toISOString(),
+      });
+      toast({ title: "Success", description: "Task updated successfully." });
+      router.refresh(); // Trigger a refresh of the current route
+    } catch (error) {
+      console.error("Error updating task:", error);
+      toast({ title: "Error", description: "Failed to update task.", variant: "destructive" });
+    } finally {
+      handleFormOpenChange(false);
+    }
   };
 
-  // ... (Other handlers: handleToggleTask, handleDeleteTask, etc. remain the same)
-  // These handlers are long, so I'll keep them but you don't need to review them for this specific fix.
+  const handleToggleTask = async (taskId: string) => {
+    if (!session?.user?.id) return;
 
-  const handleToggleTask = (taskId: string) => {
-    // This logic is complex and not related to the AI break-time fix.
-    // It is kept as is.
     const taskToToggle = tasks.find(t => t.id === taskId);
     if (!taskToToggle) return;
 
     const isCompleting = !taskToToggle.completed;
     const newEndTime = isCompleting ? new Date().toISOString() : undefined;
-    let finalTasksState = [...tasks];
 
-    finalTasksState = finalTasksState.map(t => {
-      if (t.id === taskId) {
-        const updatedTask = {
-          ...t,
-          completed: isCompleting,
-          subtasks: t.subtasks.map(st => ({
-            ...st,
-            completed: isCompleting,
-            actualEndTime: isCompleting ? (st.actualEndTime || newEndTime) : undefined,
-          }))
-        };
+    const updatedSubtasks = taskToToggle.subtasks.map(st => ({
+      ...st,
+      completed: isCompleting,
+      actualEndTime: isCompleting ? (st.actualEndTime || newEndTime) : undefined,
+    }));
 
-        if (isCompleting && updatedTask.subtasks.length > 0) {
-            const lastSubtask = [...updatedTask.subtasks]
-                .filter(st => st.actualEndTime && isValid(parseISO(st.actualEndTime)))
-                .sort((a,b) => parseISO(b.actualEndTime!).getTime() - parseISO(a.actualEndTime!).getTime())[0];
+    let updatedTaskData: Partial<Task> = {
+      completed: isCompleting,
+      subtasks: updatedSubtasks,
+      updatedAt: new Date().toISOString(),
+    };
 
-            if (lastSubtask?.actualEndTime) {
-                 const rescheduledTasks = rescheduleSubsequentSubTasksOnActualTime(
-                    [updatedTask, ...finalTasksState.filter(tsk => tsk.id !== updatedTask.id)],
-                    lastSubtask.id,
-                    lastSubtask.actualEndTime
-                 );
-                 return rescheduledTasks.find(rt => rt.id === updatedTask.id) || updatedTask;
-            }
+    if (isCompleting && updatedSubtasks.length > 0) {
+      const lastSubtask = [...updatedSubtasks]
+        .filter(st => st.actualEndTime && isValid(parseISO(st.actualEndTime)))
+        .sort((a, b) => parseISO(b.actualEndTime!).getTime() - parseISO(a.actualEndTime!).getTime())[0];
+
+      if (lastSubtask?.actualEndTime) {
+        const tempTasksForReschedule = tasks.map(t => t.id === taskId ? { ...taskToToggle, ...updatedTaskData } as Task : t);
+        const rescheduledTasks = rescheduleSubsequentSubTasksOnActualTime(
+          tempTasksForReschedule,
+          lastSubtask.id,
+          lastSubtask.actualEndTime
+        );
+        const taskAfterReschedule = rescheduledTasks.find(rt => rt.id === taskId);
+        if (taskAfterReschedule) {
+          updatedTaskData.subtasks = taskAfterReschedule.subtasks;
         }
-        return updatedTask;
       }
-      return t;
-    });
-    setTasks(finalTasksState);
+    }
+
+    try {
+      await updateTask(session.user.id, taskId, updatedTaskData);
+      const updatedTasks = await getTasksForUser(session.user.id);
+      setTasks(updatedTasks);
+      toast({ title: "Success", description: `Task ${isCompleting ? 'completed' : 'reopened'} successfully.` });
+    } catch (error) {
+      console.error("Error toggling task:", error);
+      toast({ title: "Error", description: "Failed to toggle task.", variant: "destructive" });
+    }
 
     if (activeTimerTarget?.parentTask.id === taskId && isCompleting) {
       setActiveTimerTarget(null);
     }
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+  const handleDeleteTask = async (taskId: string) => {
+    if (!session?.user?.id) return;
+    await deleteTask(session.user.id, taskId);
+    const updatedTasks = await getTasksForUser(session.user.id);
+    setTasks(updatedTasks);
     if (activeTimerTarget?.parentTask.id === taskId) {
       setActiveTimerTarget(null);
     }
   };
 
-  const handleUpdateSubTask = (taskId: string, subtaskId: string, newText: string) => {
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === taskId
-          ? {
-            ...task,
-            subtasks: task.subtasks.map(st =>
-              st.id === subtaskId ? { ...st, text: newText } : st
-            ),
-          }
-          : task
-      )
+  const handleUpdateSubTask = async (taskId: string, subtaskId: string, newText: string) => {
+    if (!session?.user?.id) return;
+
+    const parentTask = tasks.find(t => t.id === taskId);
+    if (!parentTask) return;
+
+    const updatedSubtasks = parentTask.subtasks.map(st =>
+      st.id === subtaskId ? { ...st, text: newText } : st
     );
+
+    try {
+      await updateTask(session.user.id, taskId, {
+        subtasks: updatedSubtasks,
+        updatedAt: new Date().toISOString(),
+      });
+      const updatedTasks = await getTasksForUser(session.user.id);
+      setTasks(updatedTasks);
+      toast({ title: "Success", description: "Subtask updated successfully." });
+    } catch (error) {
+      console.error("Error updating subtask:", error);
+      toast({ title: "Error", description: "Failed to update subtask.", variant: "destructive" });
+    }
   };
 
   const handleDeleteSubTask = (taskId: string, subtaskId: string) => {
@@ -569,6 +570,7 @@ export default function TasksPage() {
           />
         </div>
         <div className="space-y-8 lg:sticky lg:top-24 self-start">
+          <TimelineClock tasks={tasks} />
           <TaskTimer
             activeTarget={activeTimerTarget}
             sessionType={currentSessionTypeForActiveTarget}
@@ -584,4 +586,30 @@ export default function TasksPage() {
       </div>
     </div>
   );
+}
+
+// دالة مساعدة لضبط scheduledStartTime بشكل صحيح
+function ensureValidScheduledStartTime(subtask: any): string | undefined {
+  console.log('--- ensureValidScheduledStartTime ---');
+  console.log('input subtask:', subtask);
+
+  // If scheduledStartTime is already a valid ISO string, use it.
+  if (subtask.scheduledStartTime && typeof subtask.scheduledStartTime === 'string') {
+    const parsed = parseISO(subtask.scheduledStartTime);
+    if (isValid(parsed)) {
+      console.log('valid ISO scheduledStartTime:', subtask.scheduledStartTime);
+      return parsed.toISOString();
+    }
+  }
+
+  // If deadline and scheduledTime are provided (expected format: YYYY-MM-DD and HH:mm)
+  if (subtask.deadline && subtask.scheduledTime) {
+    const isoString = `${subtask.deadline}T${subtask.scheduledTime}:00`;
+    const parsed = parseISO(isoString);
+    console.log('parsed from deadline/scheduledTime:', { deadline: subtask.deadline, scheduledTime: subtask.scheduledTime, isoString, isValid: isValid(parsed) });
+    if (isValid(parsed)) return parsed.toISOString();
+  }
+
+  console.log('returning undefined');
+  return undefined;
 }

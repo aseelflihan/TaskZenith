@@ -19,6 +19,7 @@ export interface Task {
   // breakMinutes: number; // Removed: Managed at subtask level
   completed: boolean; // Will be true if all subtasks are completed
   createdAt: string; // ISO string for date
+  updatedAt?: string; // ISO string for last update date
   priority?: 'high' | 'medium' | 'low'; // Priority for the main task itself
   // deadline?: string; // Removed: Managed at subtask level
   // scheduledStartTime?: string; // Removed: Managed at subtask level
@@ -32,4 +33,3 @@ export type TimerSessionType = 'work' | 'break';
 // ActiveTimerTarget will now always refer to a subtask, as main tasks don't have their own timer.
 export type ActiveTimerTarget =
   | { type: 'subtask'; data: SubTask; parentTask: Task };
-

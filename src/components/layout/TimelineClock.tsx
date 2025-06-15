@@ -1,10 +1,29 @@
-
 "use client";
 
 import * as React from 'react';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Sun, Moon, CalendarDays, CheckCircle, Zap, Clock, Briefcase, Coffee as CoffeeIcon, Info, ListChecks, CheckSquare, ChevronLeft, ChevronRight, PlusCircle, CalendarClock } from 'lucide-react';
-import { setHours as dateFnsSetHours, subDays, addDays, startOfDay, endOfDay, eachHourOfInterval, addMinutes, differenceInMinutes, isValid, parseISO, format, isSameDay, getHours, getMinutes, isAfter, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
+import { 
+  setHours as dateFnsSetHours, 
+  subDays, 
+  addDays, 
+  startOfDay, 
+  endOfDay, 
+  eachHourOfInterval, 
+  addMinutes, 
+  differenceInMinutes, 
+  isValid, 
+  parseISO, 
+  format, 
+  isSameDay, 
+  getHours, 
+  getMinutes, 
+  isAfter, 
+  setMinutes, 
+  setSeconds, 
+  setMilliseconds,
+  parse
+} from 'date-fns';
 // Removed AnalogClockIcon import
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { Task, SubTask } from "@/lib/types";
-import { formatTimelineTime, getTimelineDayNightIcon, cn } from '@/lib/utils.tsx';
+import { formatTimelineTime, getTimelineDayNightIcon, cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -38,6 +57,7 @@ const TimelineSubTaskItemDisplay = ({ subtask }: { subtask: EnrichedSubTask }) =
 
   if (subtask.scheduledStartTime) {
     try {
+      console.log("Processing subtask:", subtask.text, "Schedule:", subtask.scheduledStartTime); // للتحقق من البيانات
       const scheduledDate = parseISO(subtask.scheduledStartTime);
       if (isValid(scheduledDate)) {
         scheduleString = `Scheduled: ${format(scheduledDate, "MMM d, h:mm a")}`;
@@ -48,9 +68,11 @@ const TimelineSubTaskItemDisplay = ({ subtask }: { subtask: EnrichedSubTask }) =
           </>
         );
       } else {
+        console.warn("Invalid schedule for task:", subtask.text); // للتحقق من الأخطاء
         scheduleString = "Invalid schedule";
       }
-    } catch {
+    } catch (error) {
+      console.error("Error processing schedule for task:", subtask.text, error); // للتحقق من الأخطاء
       scheduleString = "Error in schedule";
     }
   }
@@ -347,15 +369,14 @@ const VisualDayTimeline = ({
 };
 
 
-export function TimelineClock() {
+export function TimelineClock({ tasks }: { tasks: Task[] }) {
   const [extCurrentTime, setExtCurrentTime] = useState<Date | null>(null);
   const [allEnrichedSubTasks, setAllEnrichedSubTasks] = useState<EnrichedSubTask[]>([]);
-  
   const [upcomingForDisplay, setUpcomingForDisplay] = useState<EnrichedSubTask[]>([]);
   const [completedForDisplay, setCompletedForDisplay] = useState<EnrichedSubTask[]>([]);
   const [unscheduledActiveForDisplay, setUnscheduledActiveForDisplay] = useState<EnrichedSubTask[]>([]);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [dailySummary, setDailySummary] = useState<{
     date: string;
     totalSubTasksToday: number;
@@ -364,7 +385,6 @@ export function TimelineClock() {
     completedWorkMinutesToday: number;
     estimatedUnallocatedMinutes: number;
   } | null>(null);
-
   const [currentDateForView, setCurrentDateForView] = useState<Date>(startOfDay(new Date()));
   const { toast } = useToast();
 
@@ -374,129 +394,260 @@ export function TimelineClock() {
       return;
     }
 
-    let rawTasks: Task[] = [];
-    try {
-      const storedTasks = localStorage.getItem("taskzenith-tasks");
-      if (storedTasks) {
-        rawTasks = JSON.parse(storedTasks);
-      }
-    } catch (e) {
-      console.error("TimelineClock: Failed to load tasks from localStorage", e);
-      setAllEnrichedSubTasks([]);
-      setUpcomingForDisplay([]);
-      setCompletedForDisplay([]);
-      setUnscheduledActiveForDisplay([]);
-      setDailySummary(null);
-      return;
-    }
-
+    let rawTasks: Task[] = tasks || [];
+    console.log("Refreshing timeline with tasks:", rawTasks);
+    
     const enrichedSubTasksTemp: EnrichedSubTask[] = [];
     rawTasks.forEach(task => {
       (task.subtasks || []).forEach(st => {
         try {
-          const scheduledStartTimeValid = typeof st.scheduledStartTime === 'string' && st.scheduledStartTime.trim() !== '' && isValid(parseISO(st.scheduledStartTime));
-          const actualEndTimeValid = typeof st.actualEndTime === 'string' && st.actualEndTime.trim() !== '' && isValid(parseISO(st.actualEndTime));
+          let scheduledStartTime: string | undefined;
+          
+          // تحويل التاريخ والوقت المجدولين إلى تاريخ كامل
+          if (st.deadline && st.scheduledTime) {
+            try {
+              // التحقق من تنسيق التاريخ وتحويله إذا لزم الأمر
+              let dateStr = st.deadline;
+              if (st.deadline.includes('-')) {
+                // إذا كان التاريخ بتنسيق DD-MMM-YYYY
+                const [day, month, year] = st.deadline.split('-');
+                dateStr = `${year}-${month}-${day.padStart(2, '0')}`;
+              }
+
+              console.log(`[TimelineClock] Processing date:`, {
+                originalDate: st.deadline,
+                formattedDate: dateStr,
+                scheduledTime: st.scheduledTime
+              });
+
+              // محاولة تحليل التاريخ والوقت
+              const dateTime = parse(
+                `${dateStr} ${st.scheduledTime}`,
+                'yyyy-MMM-dd HH:mm',
+                new Date()
+              );
+
+              if (isValid(dateTime)) {
+                scheduledStartTime = dateTime.toISOString();
+                console.log(`[TimelineClock] Successfully processed subtask schedule: ${st.text}`, {
+                  parsedDateTime: dateTime,
+                  isoString: scheduledStartTime
+                });
+              } else {
+                console.warn(`[TimelineClock] Invalid date/time for subtask: ${st.text}`, {
+                  dateStr,
+                  scheduledTime: st.scheduledTime
+                });
+              }
+            } catch (error) {
+              console.error(`[TimelineClock] Error processing date/time for subtask: ${st.text}`, error);
+            }
+          }
+
+          const actualEndTimeValid = typeof st.actualEndTime === 'string' && 
+            st.actualEndTime.trim() !== '' && 
+            isValid(parseISO(st.actualEndTime));
 
           enrichedSubTasksTemp.push({
             ...st,
             id: st.id || crypto.randomUUID(),
-            scheduledStartTime: scheduledStartTimeValid ? parseISO(st.scheduledStartTime).toISOString() : undefined,
+            scheduledStartTime,
             actualEndTime: actualEndTimeValid ? parseISO(st.actualEndTime).toISOString() : undefined,
             parentTaskText: task.text,
-            parentTaskId: task.id
+            parentTaskId: task.id || '',
           });
         } catch (parseError) {
-           console.warn("TimelineClock: Error parsing dates for subtask when enriching", st, parseError);
+          console.error("Error processing subtask for timeline:", {
+            subtask: st,
+            error: parseError
+          });
         }
       });
     });
+
     setAllEnrichedSubTasks(enrichedSubTasksTemp);
-
-    const displayDate = startOfDay(currentDateForView); 
-
-    const localUpcoming = enrichedSubTasksTemp
-      .filter(st =>
-        !st.completed &&
-        st.scheduledStartTime &&
-        isValid(parseISO(st.scheduledStartTime)) &&
-        isSameDay(parseISO(st.scheduledStartTime), displayDate) 
-      )
-      .sort((a, b) => parseISO(a.scheduledStartTime!).getTime() - parseISO(b.scheduledStartTime!).getTime());
-    setUpcomingForDisplay(localUpcoming);
-
-    const localCompleted = enrichedSubTasksTemp
-      .filter(st => st.completed && st.actualEndTime && isValid(parseISO(st.actualEndTime)) && isSameDay(parseISO(st.actualEndTime), displayDate))
-      .sort((a, b) => parseISO(b.actualEndTime!).getTime() - parseISO(a.actualEndTime!).getTime()); 
-    setCompletedForDisplay(localCompleted);
     
-    const localUnscheduledActive = enrichedSubTasksTemp
-      .filter(st => !st.completed && !st.scheduledStartTime) 
-      .sort((a, b) => (a.parentTaskText.localeCompare(b.parentTaskText)));
-    setUnscheduledActiveForDisplay(localUnscheduledActive);
+    const displayDate = startOfDay(currentDateForView);
+    const displayDateEnd = endOfDay(currentDateForView);
 
-
-    let currentScheduledWorkMinutes = 0;
-    let currentScheduledBreakMinutes = 0;
-    let currentCompletedWorkMinutesToday = 0; 
-    let futureScheduledBusyMinutesOnDisplayDate = 0; 
-
-    const subTasksScheduledForDisplayDate = enrichedSubTasksTemp.filter(st =>
-      st.scheduledStartTime &&
-      isValid(parseISO(st.scheduledStartTime)) &&
+    // تصنيف المهام حسب حالتها
+    const upcoming = enrichedSubTasksTemp.filter(st => 
+      !st.completed && 
+      st.scheduledStartTime && 
       isSameDay(parseISO(st.scheduledStartTime), displayDate)
     );
-    
-    subTasksScheduledForDisplayDate.forEach(st => {
-      if (!st.completed) {
-        currentScheduledWorkMinutes += st.durationMinutes || 0;
-        currentScheduledBreakMinutes += st.breakMinutes || 0;
-        if (isSameDay(displayDate, startOfDay(extCurrentTime)) && isAfter(parseISO(st.scheduledStartTime!), extCurrentTime)) {
-          futureScheduledBusyMinutesOnDisplayDate += (st.durationMinutes || 0) + (st.breakMinutes || 0);
-        } else if (isAfter(displayDate, startOfDay(extCurrentTime))) {
-          futureScheduledBusyMinutesOnDisplayDate += (st.durationMinutes || 0) + (st.breakMinutes || 0);
-        }
+
+    const completed = enrichedSubTasksTemp.filter(st => 
+      st.completed && 
+      ((st.actualEndTime && isSameDay(parseISO(st.actualEndTime), displayDate)) ||
+       (st.scheduledStartTime && isSameDay(parseISO(st.scheduledStartTime), displayDate)))
+    );
+
+    const unscheduledActive = enrichedSubTasksTemp.filter(st => 
+      !st.completed && !st.scheduledStartTime
+    );
+
+    console.log("Timeline data processed:", {
+      totalTasks: enrichedSubTasksTemp.length,
+      upcoming: upcoming.length,
+      completed: completed.length,
+      unscheduled: unscheduledActive.length
+    });
+
+    setUpcomingForDisplay(upcoming);
+    setCompletedForDisplay(completed);
+    setUnscheduledActiveForDisplay(unscheduledActive);
+
+    // حساب ملخص اليوم
+    const totalSubTasks = upcoming.length + completed.length;
+    const scheduledWork = upcoming.reduce((acc, st) => acc + (st.durationMinutes || 0), 0);
+    const scheduledBreaks = upcoming.reduce((acc, st) => acc + (st.breakMinutes || 0), 0);
+    const completedWork = completed.reduce((acc, st) => {
+      if (st.actualEndTime) {
+        const actualDuration = differenceInMinutes(
+          parseISO(st.actualEndTime),
+          parseISO(st.scheduledStartTime || st.actualEndTime)
+        );
+        return acc + Math.max(0, actualDuration);
       }
-    });
-
-    localCompleted.forEach(st => { 
-      currentCompletedWorkMinutesToday += st.durationMinutes || 0;
-    });
-
-    let currentEstimatedUnallocatedMinutes = 0;
-    if (isSameDay(displayDate, startOfDay(extCurrentTime))) { 
-      const endOfTimelineDayView = dateFnsSetHours(startOfDay(extCurrentTime), TIMELINE_END_HOUR + 1); 
-      const minutesLeftInDayView = Math.max(0, differenceInMinutes(endOfTimelineDayView, extCurrentTime));
-      currentEstimatedUnallocatedMinutes = Math.max(0, minutesLeftInDayView - futureScheduledBusyMinutesOnDisplayDate);
-    } else if (isAfter(displayDate, startOfDay(extCurrentTime))) { 
-      currentEstimatedUnallocatedMinutes = (TIMELINE_END_HOUR - TIMELINE_START_HOUR + 1) * 60; 
-      currentEstimatedUnallocatedMinutes -= futureScheduledBusyMinutesOnDisplayDate; 
-      currentEstimatedUnallocatedMinutes = Math.max(0, currentEstimatedUnallocatedMinutes);
-    } else { 
-        currentEstimatedUnallocatedMinutes = 0; 
-    }
-
+      return acc + (st.durationMinutes || 0);
+    }, 0);
 
     setDailySummary({
-      date: format(displayDate, "MMMM d, yyyy"),
-      totalSubTasksToday: subTasksScheduledForDisplayDate.length, 
-      scheduledWorkMinutes: currentScheduledWorkMinutes,
-      scheduledBreakMinutes: currentScheduledBreakMinutes,
-      completedWorkMinutesToday: currentCompletedWorkMinutesToday,
-      estimatedUnallocatedMinutes: currentEstimatedUnallocatedMinutes
+      date: format(displayDate, 'yyyy-MM-dd'),
+      totalSubTasksToday: totalSubTasks,
+      scheduledWorkMinutes: scheduledWork,
+      scheduledBreakMinutes: scheduledBreaks,
+      completedWorkMinutesToday: completedWork,
+      estimatedUnallocatedMinutes: 0 // يمكن حسابها لاحقاً إذا لزم الأمر
     });
-
-  }, [extCurrentTime, currentDateForView]);
+  }, [tasks, extCurrentTime, currentDateForView]);
 
 
   useEffect(() => {
-    setExtCurrentTime(new Date()); 
-    const timerId = setInterval(() => setExtCurrentTime(new Date()), 1000 * 60); 
-    return () => clearInterval(timerId);
+    const interval = setInterval(() => {
+      const now = new Date();
+      setExtCurrentTime(now);
+    }, 60000); // تحديث كل دقيقة
+
+    setExtCurrentTime(new Date());
+    return () => clearInterval(interval);
   }, []);
+
+  // تحديث البيانات عند تغيير المهام أو التاريخ
+  useEffect(() => {
+    console.log("[TimelineClock] Tasks updated, refreshing display", {
+      tasksCount: tasks?.length || 0,
+      taskIds: tasks?.map(t => t.id)
+    });
+    refreshTimelineData();
+  }, [tasks, refreshTimelineData]);
+
+  // تحديث المهام الفرعية عند تغيير المهام الرئيسية
+  const updateSubTasksOnTaskChange = useCallback(() => {
+    if (!tasks) return;
+    
+    // إنشاء قائمة بالمهام الفرعية المحدثة
+    const newEnrichedSubTasks: EnrichedSubTask[] = [];
+    tasks.forEach(task => {
+      task.subtasks.forEach(subtask => {
+        try {
+          let scheduledStartTime: string | undefined;
+          
+          if (subtask.deadline && subtask.scheduledTime) {
+            let dateStr = subtask.deadline;
+            if (subtask.deadline.includes('-')) {
+              const [day, month, year] = subtask.deadline.split('-');
+              dateStr = `${year}-${month}-${day.padStart(2, '0')}`;
+            }
+
+            const dateTime = parse(
+              `${dateStr} ${subtask.scheduledTime}`,
+              'yyyy-MMM-dd HH:mm',
+              new Date()
+            );
+
+            if (isValid(dateTime)) {
+              scheduledStartTime = dateTime.toISOString();
+            }
+          }
+
+          newEnrichedSubTasks.push({
+            ...subtask,
+            id: subtask.id || crypto.randomUUID(),
+            scheduledStartTime,
+            parentTaskId: task.id || '',
+            parentTaskText: task.text
+          });
+        } catch (error) {
+          console.error("[TimelineClock] Error processing subtask:", error);
+        }
+      });
+    });
+
+    setAllEnrichedSubTasks(newEnrichedSubTasks);
+    console.log("[TimelineClock] Updated enriched subtasks:", newEnrichedSubTasks.length);
+  }, [tasks]);  // تحديث البيانات عند تغيير المهام
+  useEffect(() => {
+    if (tasks) {
+      updateSubTasksOnTaskChange();
+      refreshTimelineData();
+    }
+  }, [tasks]);
+
+  // تحديث الوقت فقط
+  useEffect(() => {
+    const now = new Date();
+    setExtCurrentTime(now);
+  }, []);
+
+  // وظيفة لتحديث البيانات يدوياً
+  const handleRefresh = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      updateSubTasksOnTaskChange();
+      refreshTimelineData();
+      toast({
+        title: "تم التحديث",
+        description: "تم تحديث الجدول الزمني بنجاح",
+      });
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء تحديث الجدول الزمني",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [updateSubTasksOnTaskChange, refreshTimelineData, toast]);
+
+
+  // إضافة useEffect جديد للتحقق من المهام وطباعة معلومات التشخيص
+  useEffect(() => {
+    if (tasks && tasks.length > 0) {
+      console.log("[TimelineClock] Diagnostic - Tasks received:", tasks);
+      tasks.forEach((task, index) => {
+        console.log(`[TimelineClock] Task ${index + 1}: ${task.text}`);
+        task.subtasks.forEach((subtask, subIndex) => {
+          console.log(`[TimelineClock] - Subtask ${subIndex + 1}:`, {
+            text: subtask.text,
+            deadline: subtask.deadline,
+            scheduledTime: subtask.scheduledTime,
+          });
+        });
+      });
+    }
+  }, [tasks]);
 
 
   useEffect(() => {
     if (isModalOpen) {
+      refreshTimelineData();
+    }
+    // إضافة تحديث تلقائي عند تغير المهام
+    // إذا لم يكن المودال مفتوحاً، حدث البيانات في الخلفية عند تغير المهام
+    if (!isModalOpen) {
       refreshTimelineData();
     }
     const handleStorageChange = (event: StorageEvent) => {
@@ -509,7 +660,6 @@ export function TimelineClock() {
         refreshTimelineData();
       }
     };
-
     window.addEventListener('storage', handleStorageChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     const handleTasksUpdatedByTimeline = () => {
@@ -523,7 +673,7 @@ export function TimelineClock() {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         window.removeEventListener('tasksUpdatedByTimeline', handleTasksUpdatedByTimeline);
     };
-  }, [isModalOpen, refreshTimelineData]);
+  }, [isModalOpen, refreshTimelineData, tasks]);
 
 
   const handlePreviousDay = () => {
@@ -557,68 +707,18 @@ export function TimelineClock() {
   };
 
   const handleSubTaskDropOnTimeline = (subtaskId: string, parentTaskId: string, newStartTime: Date) => {
-    let rawTasks: Task[] = [];
-    try {
-      const storedTasks = localStorage.getItem("taskzenith-tasks");
-      if (storedTasks) {
-        rawTasks = JSON.parse(storedTasks);
-      } else {
-        console.error("No tasks found in localStorage to update.");
-        return;
-      }
-    } catch (e) {
-      console.error("Failed to parse tasks from localStorage for drag-drop update.", e);
-      return;
-    }
-
-    let taskUpdated = false;
-    const updatedRawTasks = rawTasks.map(task => {
-      if (task.id === parentTaskId) {
-        const newSubtasks = task.subtasks.map(st => {
-          if (st.id === subtaskId) {
-            taskUpdated = true;
-            return {
-              ...st,
-              scheduledStartTime: newStartTime.toISOString(),
-              deadline: format(newStartTime, 'yyyy-MM-dd'),
-              scheduledTime: format(newStartTime, 'HH:mm'),
-              completed: false, 
-            };
-          }
-          return st;
-        });
-        return { ...task, subtasks: newSubtasks };
-      }
-      return task;
+    toast({
+      title: "Drag & drop not supported in timeline for cloud tasks.",
+      description: "يرجى تعديل توقيت المهمة من صفحة المهام الرئيسية.",
+      variant: "destructive",
     });
-
-    if (taskUpdated) {
-      try {
-        localStorage.setItem("taskzenith-tasks", JSON.stringify(updatedRawTasks));
-        toast({
-          title: "Subtask Rescheduled",
-          description: `Subtask moved to ${format(newStartTime, "MMM d, h:mm a")}.`,
-        });
-        refreshTimelineData();
-        window.dispatchEvent(new CustomEvent('tasksUpdatedByTimeline'));
-      } catch (e) {
-        console.error("Failed to save updated tasks to localStorage after drag-drop.", e);
-        toast({
-          title: "Error Saving Change",
-          description: "Could not save the rescheduled subtask.",
-          variant: "destructive",
-        });
-      }
-    } else {
-      console.warn("Subtask to drag was not found in localStorage data.");
-    }
   };
 
 
   if (!extCurrentTime) return null; 
 
-  const timeStringForDialog = formatTimelineTime(extCurrentTime.toISOString());
-  const dayNightIconForDialog = getTimelineDayNightIcon(extCurrentTime.toISOString(), Sun, Moon);
+  const timeStringForDialog = formatTimelineTime(extCurrentTime.toISOString() as string);
+  const dayNightIconForDialog = getTimelineDayNightIcon(extCurrentTime.toISOString() as string, Sun, Moon);
 
   const subtasksForVisualTimeline = allEnrichedSubTasks.filter(st =>
     st.scheduledStartTime &&

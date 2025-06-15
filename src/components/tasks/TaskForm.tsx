@@ -59,7 +59,7 @@ const getSubTaskTimes = (
     return {
       workStartTime: workStartDateTime,
       workEndTime: workEndDateTime,
-      activityEndTime: activityEndDateTime,
+      activityEndTime: activityEndTime,
     };
   } catch (e) {
     return null;
@@ -71,8 +71,8 @@ const subTaskSchema = z.object({
   id: z.string().optional(),
   text: z.string().min(1, "Subtask text cannot be empty."),
   completed: z.boolean().default(false),
-  durationMinutes: z.coerce.number().min(0, "Duration must be a non-negative number.").default(25),
-  breakMinutes: z.coerce.number().min(0, "Break time must be a non-negative number.").default(0),
+  durationMinutes: z.coerce.number().min(0, "Duration must be a non-negative number.").optional().default(25),
+  breakMinutes: z.coerce.number().min(0, "Break time must be a non-negative number.").optional().default(0),
   deadline: z.string().optional().refine(val => !val || /^\d{4}-\d{2}-\d{2}$/.test(val), {
     message: "Date must be in YYYY-MM-DD format or empty.",
   }),
