@@ -1,167 +1,154 @@
+// D:\applications\tasks\4\src\app\auth\signin\page.tsx
+
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { getAuth, signInWithEmailAndPassword, sendSignInLinkToEmail } from "firebase/auth";
+import { app } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2 } from "lucide-react";
-import Link from "next/link";
+import { Mail, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { signIn } from "next-auth/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isMagicLinkLoading, setIsMagicLinkLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
 
-  // تسجيل الدخول عبر جوجل
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setError(null);
-    const result = await signIn("google", {
-      callbackUrl: "/",
-      redirect: false,
-    });
-    if (result?.error) {
-      setError("فشل تسجيل الدخول عبر جوجل. حاول مرة أخرى.");
-      setIsLoading(false);
-    } else if (result?.url) {
-      window.open(
-        result.url,
-        "_blank",
-        "width=500,height=600,noopener,noreferrer"
-      );
-      setIsLoading(false);
-    } else {
-      setIsLoading(false);
-    }
-  };
-
-  // تسجيل الدخول عبر البريد
-  const handleEmailSignIn = async (e: React.FormEvent) => {
+  const handlePasswordSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    const auth = getAuth(app);
     try {
-      const result = await signIn("credentials", {
-        redirect: false,
-        email,
-        password,
-        callbackUrl: "/",
-      });
-      if (result?.error) {
-        setError("بيانات الدخول غير صحيحة أو لم يتم تفعيل البريد الإلكتروني.");
-      } else if (result?.ok) {
-        router.push("/");
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      if (userCredential.user) {
+        const idToken = await userCredential.user.getIdToken();
+        const nextAuthResponse = await signIn('credentials', {
+          idToken,
+          redirect: false,
+        });
+
+        if (nextAuthResponse?.ok) {
+          router.push('/');
+        } else {
+          setError(nextAuthResponse?.error || "Failed to create an application session.");
+        }
       }
     } catch (err: any) {
-      setError("حدث خطأ أثناء تسجيل الدخول.");
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
   };
+  
+  const handleMagicLinkSignIn = async () => {
+    if (!email) {
+      setError("Please enter your email to receive a magic link.");
+      return;
+    }
+    setIsMagicLinkLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    const auth = getAuth(app);
+    const actionCodeSettings = {
+      url: `${window.location.origin}/auth/verify-email`,
+      handleCodeInApp: true,
+    };
+
+    try {
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      window.localStorage.setItem('emailForSignIn', email);
+      setSuccess("A sign-in link has been sent to your email.");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsMagicLinkLoading(false);
+    }
+  };
+  
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    setError(null);
+    await signIn("google", { callbackUrl: "/" });
+    setIsGoogleLoading(false);
+  };
+
+  const anyLoading = isLoading || isMagicLinkLoading || isGoogleLoading;
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background p-4">
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
-          <CardDescription>
-            You can sign in using your email and password or Google account.
-          </CardDescription>
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+      <Card className="w-full max-w-md shadow-lg border-gray-200 dark:border-gray-800">
+        <CardHeader className="text-center p-6">
+          <CardTitle className="text-3xl font-bold tracking-tight">Welcome Back</CardTitle>
+          <CardDescription className="text-muted-foreground pt-2">Sign in to access your dashboard</CardDescription>
         </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <form className="space-y-4" onSubmit={handleEmailSignIn}>
-            <div>
+        <CardContent className="p-6">
+          {error && <Alert variant="destructive" className="mb-4"><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+          {success && <Alert variant="default" className="mb-4"><AlertTitle>Success</AlertTitle><AlertDescription>{success}</AlertDescription></Alert>}
+          
+          <form className="space-y-4" onSubmit={handlePasswordSignIn}>
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-              />
+              <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required disabled={anyLoading} placeholder="m@example.com" />
             </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-              />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link href="/auth/forgot-password" className="text-sm font-medium text-primary hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+              <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} disabled={anyLoading} />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? <Loader2 className="animate-spin w-5 h-5" /> : null}
-              Sign in
+            <Button type="submit" className="w-full" disabled={anyLoading || !password}>
+              {isLoading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
+              Sign In with Password
             </Button>
           </form>
-          <div className="my-4 text-center text-muted-foreground">or</div>
-          <Button
-            onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-2"
-            disabled={isLoading}
-            variant="outline"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 48 48"
-              className="inline-block"
-            >
-              <g>
-                <path
-                  fill="#4285F4"
-                  d="M43.611 20.083H42V20H24v8h11.303C33.962 32.083 29.418 35 24 35c-6.065 0-11-4.935-11-11s4.935-11 11-11c2.507 0 4.813.857 6.661 2.278l6.366-6.366C33.527 6.527 28.977 4 24 4 12.954 4 4 12.954 4 24s8.954 20 20 20c11.045 0 19.799-8.955 19.799-20 0-1.341-.138-2.651-.388-3.917z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M6.306 14.691l6.571 4.819C14.655 16.108 19.004 13 24 13c2.507 0 4.813.857 6.661 2.278l6.366-6.366C33.527 6.527 28.977 4 24 4c-7.732 0-14.313 4.41-17.694 10.691z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M24 44c5.318 0 10.13-1.824 13.885-4.965l-6.415-5.26C29.418 35 24 35 18.697 32.083l-6.391 5.228C13.87 42.176 18.682 44 24 44z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M43.611 20.083H42V20H24v8h11.303c-1.937 4.083-6.481 7-11.303 7-6.065 0-11-4.935-11-11s4.935-11 11-11c2.507 0 4.813.857 6.661 2.278l6.366-6.366C33.527 6.527 28.977 4 24 4c-7.732 0-14.313 4.41-17.694 10.691z"
-                />
-              </g>
-            </svg>
-            Sign in with Google
-          </Button>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+            <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">Or</span></div>
+          </div>
+          
+          <div className="space-y-3">
+            <Button onClick={handleMagicLinkSignIn} className="w-full" variant="secondary" disabled={anyLoading}>
+              {isMagicLinkLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Mail className="mr-2 h-4 w-4" />}
+              Send Magic Link
+            </Button>
+            <Button onClick={handleGoogleSignIn} className="w-full" variant="outline" disabled={anyLoading}>
+              {isGoogleLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : 
+                <svg role="img" viewBox="0 0 24 24" className="mr-2 h-4 w-4">
+                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#E94235"></path>
+                    <path fill="none" d="M1 1h22v22H1z"></path>
+                </svg>
+              }
+              Sign In with Google
+            </Button>
+          </div>
         </CardContent>
-        <CardFooter className="flex flex-col items-center text-center text-sm space-y-2">
-          <p>
-            Don't have an account?{" "}
-            <Link
-              href="/auth/signup"
-              className="text-primary hover:underline"
-            >
-              Create account
-            </Link>
-          </p>
+        <CardFooter className="p-6 justify-center">
+            <p className="text-sm text-muted-foreground">
+                Don't have an account? <Link href="/auth/signup" className="font-semibold text-primary hover:underline">Sign up</Link>
+            </p>
         </CardFooter>
       </Card>
     </div>
