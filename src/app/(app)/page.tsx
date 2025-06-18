@@ -1,5 +1,5 @@
 // D:\applications\tasks\TaskZenith\src\app\(app)\page.tsx
-// CORRECTED VERSION: Re-added the missing prop to TaskList.
+// REVISED: Now handles opening tasks for editing directly from the timeline, without removing any existing features.
 
 "use client";
 
@@ -69,7 +69,8 @@ export default function TasksPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { toast } = useToast();
-  const { setCreateTaskHandler } = useTimeline();
+  // MODIFIED: Destructure the new setOpenTaskHandler from the context
+  const { setCreateTaskHandler, setOpenTaskHandler } = useTimeline();
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTimerTarget, setActiveTimerTarget] = useState<ActiveTimerTarget | null>(null);
@@ -120,9 +121,29 @@ export default function TasksPage() {
     setIsFormOpen(true);
   }, []);
 
+  // NEW: Handler for opening a task for editing from the timeline
+  const handleOpenTaskForEditing = useCallback((taskToEdit: Task) => {
+    // This function is now also used by the context handler
+    setEditingTask(taskToEdit);
+    setDefaultDateForNewTask(null);
+    setPrefilledTaskData(null); // Clear any prefilled data for new tasks
+    setIsFormOpen(true);
+  }, []);
+
+  // MODIFIED: useEffect now sets both handlers in the context
   useEffect(() => {
-    setCreateTaskHandler(handleCreateTaskFromTimeline);
-  }, [setCreateTaskHandler, handleCreateTaskFromTimeline]);
+    if (setCreateTaskHandler) {
+      setCreateTaskHandler(handleCreateTaskFromTimeline);
+    }
+    if (setOpenTaskHandler) {
+      setOpenTaskHandler(handleOpenTaskForEditing);
+    }
+    // Cleanup function to avoid setting state on unmounted components
+    return () => {
+      if (setCreateTaskHandler) setCreateTaskHandler(() => {});
+      if (setOpenTaskHandler) setOpenTaskHandler(() => {});
+    };
+  }, [setCreateTaskHandler, handleCreateTaskFromTimeline, setOpenTaskHandler, handleOpenTaskForEditing]);
 
   const handleFormOpenChange = (isOpen: boolean) => {
     setIsFormOpen(isOpen);

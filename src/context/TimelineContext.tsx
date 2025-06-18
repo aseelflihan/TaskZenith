@@ -1,6 +1,6 @@
 // src/context/TimelineContext.tsx
-// REVISED: Simplified the context to avoid timing issues.
-// Now it directly holds the function provided by the page component.
+// REVISED: Expanded to handle both creating and opening tasks for editing.
+// Now holds handlers for both actions, provided by the page component.
 
 "use client";
 
@@ -9,33 +9,60 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 // Define the type for the creation function
 type CreateTaskHandler = (startTime: Date, duration: number) => void;
 
+// NEW: Define the type for the editing function. 
+// It accepts a task object (we use 'any' for flexibility, the actual type is enforced in the components).
+type OpenTaskHandler = (task: any) => void;
+
 // Define the shape of the context data
 interface TimelineContextType {
+  // Create task functions
   createTaskFromTimeline: CreateTaskHandler;
   setCreateTaskHandler: (handler: CreateTaskHandler) => void;
+  // NEW: Edit task functions
+  openTaskForEditing: OpenTaskHandler;
+  setOpenTaskHandler: (handler: OpenTaskHandler) => void;
 }
 
-// Create the context with a default do-nothing function
+// Create the context with default do-nothing functions
 const TimelineContext = createContext<TimelineContextType>({
-  createTaskFromTimeline: () => console.warn("Timeline context used before provider"),
+  createTaskFromTimeline: () => console.warn("Timeline context (create) used before provider"),
   setCreateTaskHandler: () => {},
+  openTaskForEditing: () => console.warn("Timeline context (edit) used before provider"),
+  setOpenTaskHandler: () => {},
 });
 
 // Create a provider component
 export const TimelineProvider = ({ children }: { children: React.ReactNode }) => {
-  const [handler, setHandler] = useState<CreateTaskHandler>(() => () => {});
+  // Handler for creating tasks
+  const [createHandler, setCreateHandler] = useState<CreateTaskHandler>(() => () => {});
+  
+  // NEW: Handler for opening tasks for editing
+  const [openHandler, setOpenHandler] = useState<OpenTaskHandler>(() => () => {});
 
+  // --- Create Logic ---
   const createTaskFromTimeline = useCallback((startTime: Date, duration: number) => {
-    handler(startTime, duration);
-  }, [handler]);
+    createHandler(startTime, duration);
+  }, [createHandler]);
 
   const setCreateTaskHandler = useCallback((newHandler: CreateTaskHandler) => {
-    setHandler(() => newHandler);
+    setCreateHandler(() => newHandler);
   }, []);
+
+  // --- NEW: Edit Logic ---
+  const openTaskForEditing = useCallback((task: any) => {
+    openHandler(task);
+  }, [openHandler]);
+
+  const setOpenTaskHandler = useCallback((newHandler: OpenTaskHandler) => {
+    setOpenHandler(() => newHandler);
+  }, []);
+
 
   const value = {
     createTaskFromTimeline,
     setCreateTaskHandler,
+    openTaskForEditing,
+    setOpenTaskHandler,
   };
 
   return (
