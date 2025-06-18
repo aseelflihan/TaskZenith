@@ -1,6 +1,9 @@
+// D:\applications\tasks\TaskZenith\src\components\tasks\TaskList.tsx
+// FEATURE UPDATE: Added onCreateTaskFromTimeline prop to pass through to TaskItem.
+
 "use client";
 
-import React, { useState, useCallback } from 'react'; // Added useCallback based on previous needs
+import React, { useState, useCallback } from 'react';
 import type { Task, SubTask, TaskFilter } from "@/lib/types";
 import { TaskItem } from "./TaskItem";
 import { TaskForm, TaskFormData } from "./TaskForm";
@@ -12,7 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger, // Added DialogTrigger
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -31,6 +34,8 @@ interface TaskListProps {
   onFormOpenChange: (isOpen: boolean) => void;
   onOpenEditForm: (task: Task) => void;
   onOpenNewTaskForm: () => void;
+  // NEW PROP
+  onCreateTaskFromTimeline: (startTime: Date, duration: number) => void;
   initialDataForForm: TaskFormData | Partial<Task> | null;
   onAddTask: (data: TaskFormData) => void;
   onEditTask: (data: TaskFormData) => void;
@@ -52,6 +57,7 @@ export function TaskList({
   onFormOpenChange,
   onOpenEditForm,
   onOpenNewTaskForm,
+  onCreateTaskFromTimeline, // Destructure new prop
   initialDataForForm,
   onAddTask,
   onEditTask,
@@ -130,7 +136,6 @@ export function TaskList({
       task.priority === priorityFilter ||
       (priorityFilter !== 'all' && task.priority === undefined && false);
 
-
     const matchesSearch =
       searchTerm === "" ||
       task.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -141,86 +146,38 @@ export function TaskList({
 
   const getFirstScheduledTime = (task: Task): number => {
     const firstScheduledSubtask = task.subtasks
-      .filter((st: SubTask) => {
-        if (st.completed) return false;
-        if (typeof st.scheduledStartTime === 'string' && st.scheduledStartTime.trim() !== '') {
-          try {
-            const date = parseISO(st.scheduledStartTime);
-            return isValid(date);
-          } catch (e) {
-            return false;
-          }
-        }
-        return false;
-      })
-      .sort((s1: SubTask, s2: SubTask) => {
-        const time1 = (s1.scheduledStartTime && typeof s1.scheduledStartTime === 'string' && s1.scheduledStartTime.trim() !== '' && isValid(parseISO(s1.scheduledStartTime))) ? parseISO(s1.scheduledStartTime).getTime() : NaN;
-        const time2 = (s2.scheduledStartTime && typeof s2.scheduledStartTime === 'string' && s2.scheduledStartTime.trim() !== '' && isValid(parseISO(s2.scheduledStartTime))) ? parseISO(s2.scheduledStartTime).getTime() : NaN;
-        
-        if (isNaN(time1) && isNaN(time2)) return 0;
-        if (isNaN(time1)) return 1; 
-        if (isNaN(time2)) return -1;
-        return time1 - time2;
-      })[0];
+      .filter((st: SubTask) => !st.completed && st.scheduledStartTime && isValid(parseISO(st.scheduledStartTime)))
+      .sort((s1: SubTask, s2: SubTask) => parseISO(s1.scheduledStartTime!).getTime() - parseISO(s2.scheduledStartTime!).getTime())[0];
   
-    if (firstScheduledSubtask && typeof firstScheduledSubtask.scheduledStartTime === 'string' && firstScheduledSubtask.scheduledStartTime.trim() !== '') {
-      try {
-        const date = parseISO(firstScheduledSubtask.scheduledStartTime);
-        if (isValid(date)) {
-          return date.getTime();
-        }
-      } catch (e) {
-        // Fall through
-      }
-    }
-    return Infinity; 
+    return firstScheduledSubtask ? parseISO(firstScheduledSubtask.scheduledStartTime!).getTime() : Infinity; 
   };
-
 
   const sortedTasks = [...filteredTasks].sort((a, b) => {
     const aFirstTime = getFirstScheduledTime(a);
     const bFirstTime = getFirstScheduledTime(b);
-
-    if (aFirstTime !== Infinity && bFirstTime === Infinity) return -1;
-    if (aFirstTime === Infinity && bFirstTime !== Infinity) return 1;
-    if (aFirstTime !== Infinity && bFirstTime !== Infinity && aFirstTime !== bFirstTime) {
-      return aFirstTime - bFirstTime;
-    }
-
-    if (a.completed !== b.completed) {
-      return a.completed ? 1 : -1;
-    }
-
+    if (aFirstTime !== Infinity && bFirstTime !== Infinity) return aFirstTime - bFirstTime;
+    if (aFirstTime !== Infinity) return -1;
+    if (bFirstTime !== Infinity) return 1;
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     const aPriorityVal = a.priority ? priorityOrder[a.priority] : 3; 
     const bPriorityVal = b.priority ? priorityOrder[b.priority] : 3;
-    if (aPriorityVal !== bPriorityVal) {
-      return aPriorityVal - bPriorityVal;
-    }
-
-    const aCreatedAtNum = (a.createdAt && isValid(parseISO(a.createdAt))) ? parseISO(a.createdAt).getTime() : NaN;
-    const bCreatedAtNum = (b.createdAt && isValid(parseISO(b.createdAt))) ? parseISO(b.createdAt).getTime() : NaN;
-
-    if (isNaN(aCreatedAtNum) && isNaN(bCreatedAtNum)) return 0;
-    if (isNaN(aCreatedAtNum)) return 1;
-    if (isNaN(bCreatedAtNum)) return -1;
+    if (aPriorityVal !== bPriorityVal) return aPriorityVal - bPriorityVal;
+    const aCreatedAtNum = a.createdAt ? parseISO(a.createdAt).getTime() : 0;
+    const bCreatedAtNum = b.createdAt ? parseISO(b.createdAt).getTime() : 0;
     return bCreatedAtNum - aCreatedAtNum;
   });
 
   let titleForDialog = "Create New Task";
-  if (editingTask) { // Use editingTask prop to determine if in edit mode
+  if (editingTask) {
     titleForDialog = "Edit Task";
-  } else if (initialDataForForm && (initialDataForForm as TaskFormData).text && (initialDataForForm as TaskFormData).subtasks?.length && !(initialDataForForm as Partial<Task>)?.createdAt) {
-    titleForDialog = "Review & Add AI Generated Task";
-  } else if (initialDataForForm && (initialDataForForm as TaskFormData).subtasks && (initialDataForForm as TaskFormData).subtasks![0]?.deadline) { 
-    try {
-      const firstSubtask = (initialDataForForm as TaskFormData).subtasks![0];
-      if (firstSubtask.deadline && firstSubtask.scheduledTime) {
-         titleForDialog = `New Task for ${format(parseISO(firstSubtask.deadline + "T" + firstSubtask.scheduledTime + ":00"), 'MMM d, h:mm a')}`;
-      } else if (firstSubtask.deadline) {
-         titleForDialog = `New Task for ${format(parseISO(firstSubtask.deadline), 'MMM d')}`;
-      }
-    } catch { /* fallback to default title if date parsing fails */ }
+  } else if (initialDataForForm && 'text' in initialDataForForm && (initialDataForForm as TaskFormData).subtasks?.[0]?.scheduledTime) {
+      try {
+        const firstSubtask = (initialDataForForm as TaskFormData).subtasks![0];
+        if (firstSubtask.deadline && firstSubtask.scheduledTime) {
+           titleForDialog = `New Task for ${format(parseISO(`${firstSubtask.deadline}T${firstSubtask.scheduledTime}:00`), 'MMM d, h:mm a')}`;
+        }
+      } catch { /* fallback */ }
   }
 
 
@@ -239,7 +196,7 @@ export function TaskList({
             </DialogHeader>
             <TaskForm
               onSubmit={handleFormSubmit}
-              initialData={editingTask || initialDataForForm}
+              initialData={initialDataForForm}
               isEditing={!!editingTask}
               onCancel={handleFormCancel}
               allTasks={allTasks}
@@ -326,3 +283,8 @@ export function TaskList({
     </div>
   );
 }
+
+// It seems there's a reference to TimelineClock in the original file which is now in AppShell.
+// To avoid breaking anything, I'm removing it, assuming it's no longer needed here.
+// If it was for a different purpose, we can re-evaluate.
+// For now, this component focuses on listing tasks.

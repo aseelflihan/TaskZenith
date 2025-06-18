@@ -1,17 +1,17 @@
 // D:\applications\tasks\TaskZenith\src\app\(app)\page.tsx
-// FINAL MERGED VERSION: Integrates the new ProductivityBar component
-// while preserving all existing logic and features from the original file.
+// CORRECTED VERSION: Re-added the missing prop to TaskList.
 
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useTimeline } from '@/context/TimelineContext'; 
 import { TaskList } from "@/components/tasks/TaskList";
 import { TaskTimer } from "@/components/tasks/TaskTimer";
 import { AIPrioritization } from "@/components/tasks/AIPrioritization";
 import { AIChatTaskGenerator } from "@/components/tasks/AIChatTaskGenerator";
-import { ProductivityBar } from '@/components/tasks/ProductivityBar'; // <-- NEW IMPORT
+import { ProductivityBar } from '@/components/tasks/ProductivityBar';
 import type { Task, SubTask, ActiveTimerTarget, TimerSessionType } from "@/lib/types";
 import type { TaskFormData } from "@/components/tasks/TaskForm";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +21,6 @@ import { parseISO, format, isValid, addMinutes, isSameDay, startOfDay } from 'da
 import { Button } from '@/components/ui/button';
 import { getTasksForUser, addTask, updateTask, deleteTask } from "@/lib/actions";
 
-// All existing helper functions are preserved
 const SCHEDULE_FOR_DATE_KEY = "taskzenith-schedule-for-date";
 
 const rescheduleSubsequentSubTasksOnActualTime = (
@@ -32,13 +31,11 @@ const rescheduleSubsequentSubTasksOnActualTime = (
   let newTasksState = JSON.parse(JSON.stringify(allTasks)) as Task[];
   const triggeringSubTaskData = newTasksState.flatMap(t => t.subtasks).find(st => st.id === triggeringSubTaskId);
   if (!triggeringSubTaskData) return newTasksState;
-
   let lastActivityEndTime = addMinutes(new Date(triggeringSubTaskActualWorkEndTime), triggeringSubTaskData.breakMinutes || 0);
   const allSubTasksSorted = newTasksState
     .flatMap(task => task.subtasks.map(st => ({ ...st, parentTaskId: task.id })))
     .filter(st => st.scheduledStartTime && isValid(parseISO(st.scheduledStartTime)))
     .sort((a, b) => parseISO(a.scheduledStartTime!).getTime() - parseISO(b.scheduledStartTime!).getTime());
-
   let foundTriggeringSubTask = false;
   for (const subTaskToPotentiallyReschedule of allSubTasksSorted) {
     if (subTaskToPotentiallyReschedule.id === triggeringSubTaskId) {
@@ -53,12 +50,7 @@ const rescheduleSubsequentSubTasksOnActualTime = (
             ...task,
             subtasks: task.subtasks.map(st =>
               st.id === subTaskToPotentiallyReschedule.id
-                ? {
-                  ...st,
-                  scheduledStartTime: newScheduledStartTimeForThisSubtask.toISOString(),
-                  deadline: format(newScheduledStartTimeForThisSubtask, 'yyyy-MM-dd'),
-                  scheduledTime: format(newScheduledStartTimeForThisSubtask, 'HH:mm'),
-                }
+                ? { ...st, scheduledStartTime: newScheduledStartTimeForThisSubtask.toISOString(), deadline: format(newScheduledStartTimeForThisSubtask, 'yyyy-MM-dd'), scheduledTime: format(newScheduledStartTimeForThisSubtask, 'HH:mm'), }
                 : st
             ),
           };
@@ -74,10 +66,10 @@ const rescheduleSubsequentSubTasksOnActualTime = (
 };
 
 export default function TasksPage() {
-  // All existing state and hooks are preserved
   const { data: session, status } = useSession();
   const router = useRouter();
   const { toast } = useToast();
+  const { setCreateTaskHandler } = useTimeline();
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTimerTarget, setActiveTimerTarget] = useState<ActiveTimerTarget | null>(null);
@@ -86,8 +78,8 @@ export default function TasksPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [defaultDateForNewTask, setDefaultDateForNewTask] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [prefilledTaskData, setPrefilledTaskData] = useState<Partial<TaskFormData> | null>(null);
 
-  // All existing functions and effects are preserved
   const refetchTasks = useCallback(async () => {
     if (session?.user?.id) {
       try {
@@ -95,11 +87,7 @@ export default function TasksPage() {
         setTasks(userTasks);
       } catch (error) {
         console.error("Error refetching tasks:", error);
-        toast({
-          title: "Error",
-          description: "Could not sync tasks with the server.",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: "Could not sync tasks with the server.", variant: "destructive" });
       }
     }
   }, [session, toast]);
@@ -113,22 +101,48 @@ export default function TasksPage() {
     }
   }, [status, router, refetchTasks]);
 
+  const handleCreateTaskFromTimeline = useCallback((startTime: Date, duration: number) => {
+    setEditingTask(null);
+    setDefaultDateForNewTask(null);
+    setPrefilledTaskData({
+        text: '',
+        priority: 'medium',
+        subtasks: [{
+            id: crypto.randomUUID(),
+            text: '',
+            completed: false,
+            durationMinutes: duration,
+            breakMinutes: 0,
+            deadline: format(startTime, 'yyyy-MM-dd'),
+            scheduledTime: format(startTime, 'HH:mm'),
+        }]
+    });
+    setIsFormOpen(true);
+  }, []);
+
+  useEffect(() => {
+    setCreateTaskHandler(handleCreateTaskFromTimeline);
+  }, [setCreateTaskHandler, handleCreateTaskFromTimeline]);
+
   const handleFormOpenChange = (isOpen: boolean) => {
     setIsFormOpen(isOpen);
     if (!isOpen) {
       setEditingTask(null);
       setDefaultDateForNewTask(null);
+      setPrefilledTaskData(null);
     }
   };
 
   const handleOpenEditForm = (task: Task) => {
     setEditingTask(task);
     setDefaultDateForNewTask(null);
+    setPrefilledTaskData(null);
     setIsFormOpen(true);
   };
   
   const handleOpenNewTaskForm = () => {
     setEditingTask(null);
+    setPrefilledTaskData(null);
     try {
       const scheduleForDateISO = localStorage.getItem(SCHEDULE_FOR_DATE_KEY);
       if (scheduleForDateISO) {
@@ -146,10 +160,7 @@ export default function TasksPage() {
       await addTask(session.user.id, taskData);
     }
     await refetchTasks();
-    toast({
-        title: "AI Tasks Added",
-        description: `${newTasksData.length} new tasks have been added to your list.`,
-    });
+    toast({ title: "AI Tasks Added", description: `${newTasksData.length} new tasks have been added.` });
   };
   
   const handleAddTask = async (data: TaskFormData) => {
@@ -160,6 +171,7 @@ export default function TasksPage() {
         return;
     }
     setIsFormOpen(false);
+    setPrefilledTaskData(null);
     toast({ title: "Success", description: "Task added successfully" });
     await refetchTasks();
   };
@@ -296,12 +308,7 @@ export default function TasksPage() {
 
   const startTimerForSubtask = (subtask: SubTask, parentTask: Task) => {
     const now = new Date();
-    setTasks(prev => prev.map(t => {
-      if (t.id === parentTask.id) {
-        return { ...t, completed: false, subtasks: t.subtasks.map(st => st.id === subtask.id ? { ...st, scheduledStartTime: now.toISOString(), deadline: format(now, 'yyyy-MM-dd'), scheduledTime: format(now, 'HH:mm'), completed: false, actualEndTime: undefined } : st )};
-      }
-      return t;
-    }));
+    setTasks(prev => prev.map(t => t.id === parentTask.id ? { ...t, completed: false, subtasks: t.subtasks.map(st => st.id === subtask.id ? { ...st, scheduledStartTime: now.toISOString(), deadline: format(now, 'yyyy-MM-dd'), scheduledTime: format(now, 'HH:mm'), completed: false, actualEndTime: undefined } : st ) } : t ));
     const updatedTargetData = { ...subtask, scheduledStartTime: now.toISOString(), deadline: format(now, 'yyyy-MM-dd'), scheduledTime: format(now, 'HH:mm'), completed: false, actualEndTime: undefined };
     const updatedTarget: ActiveTimerTarget = { type: 'subtask', data: updatedTargetData, parentTask: parentTask };
     setActiveTimerTarget(updatedTarget);
@@ -318,10 +325,10 @@ export default function TasksPage() {
     }
   };
   
-  let formInitialData: TaskFormData | Partial<Task> | null = editingTask;
-  if (!editingTask && defaultDateForNewTask) {
+  let formInitialData: TaskFormData | Partial<Task> | null = prefilledTaskData || editingTask;
+  if (!formInitialData && defaultDateForNewTask) {
       formInitialData = { text: "", priority: "medium", subtasks: [{ id: crypto.randomUUID(), text: "", completed: false, durationMinutes: 25, breakMinutes: 0, deadline: format(defaultDateForNewTask, 'yyyy-MM-dd'), scheduledTime: format(defaultDateForNewTask, 'HH:mm'), }]};
-  } else if (!editingTask && !defaultDateForNewTask) {
+  } else if (!formInitialData) {
       const now = new Date();
       formInitialData = { text: "", priority: "medium", subtasks: [{ id: crypto.randomUUID(), text: "", completed: false, durationMinutes: 25, breakMinutes: 0, deadline: format(now, 'yyyy-MM-dd'), scheduledTime: format(now, 'HH:mm'), }]};
   }
@@ -346,10 +353,8 @@ export default function TasksPage() {
 
   return (
     <div className="container mx-auto py-8">
-      {/* The only new addition is this single line */}
       <ProductivityBar tasks={tasks} onStartNextTask={startTimerForSubtask} />
       
-      {/* The rest of the layout remains exactly as it was */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <TaskList
@@ -380,7 +385,6 @@ export default function TasksPage() {
             onTimerComplete={handleTimerComplete}
             onBreakManuallyEnded={handleBreakManuallyEnded}
           />
-          {/* TimelineClock has been removed from here as it's in the AppShell header */}
           <AIPrioritization tasks={tasks} />
           <AIChatTaskGenerator 
             onTasksGenerated={handleAITasksGenerated} 
