@@ -1,6 +1,5 @@
 // D:\applications\tasks\TaskZenith\src\components\layout\TimelineClock.tsx
-// THE ABSOLUTELY, POSITIVELY FINAL VERSION: Adjusts the DialogContent height
-// to prevent clipping on mobile devices, ensuring all UI is visible.
+// FEATURE UPDATE: Visualizing Break Times on the Timeline
 
 "use client";
 
@@ -9,7 +8,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogTrigger, DialogClose, DialogTitle } from "@/components/ui/dialog";
-import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw, AlertTriangle, Target, BrainCircuit, X, Star, Shield, ArrowDown, Briefcase, Clock, CalendarClock } from 'lucide-react';
+// ADDED: Coffee icon for break times
+import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw, AlertTriangle, Target, BrainCircuit, X, Star, Shield, ArrowDown, Briefcase, Clock, CalendarClock, Coffee } from 'lucide-react';
 import { subDays, addDays, startOfDay, addMinutes, isValid, parseISO, format, isSameDay, getHours, getMinutes, parse, areIntervalsOverlapping, differenceInSeconds } from 'date-fns';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -91,6 +91,7 @@ const StaticSubTaskItem = ({ subtask }: { subtask: EnrichedSubTask }) => (
     </div>
 );
 
+// --- MODIFIED COMPONENT to show break times ---
 const VisualDayTimeline = ({ subtasks, currentDateForView, onDropTask }: { subtasks: EnrichedSubTask[], currentDateForView: Date, onDropTask: (subtaskId: string, parentTaskId: string, newStartTime: Date) => void }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const timelineEventsContainerRef = useRef<HTMLDivElement>(null);
@@ -149,18 +150,42 @@ const VisualDayTimeline = ({ subtasks, currentDateForView, onDropTask }: { subta
                             if (!subtask.scheduledStartTime || !subtask.durationMinutes) return null;
                             const startTime = parseISO(subtask.scheduledStartTime);
                             const minutesFromStart = getHours(startTime) * 60 + getMinutes(startTime);
-                            const style: React.CSSProperties = { top: `${minutesFromStart * PIXELS_PER_MINUTE}px`, height: `${Math.max(2, subtask.durationMinutes * PIXELS_PER_MINUTE - 2)}px` };
+                            const taskStyle: React.CSSProperties = { top: `${minutesFromStart * PIXELS_PER_MINUTE}px`, height: `${Math.max(2, subtask.durationMinutes * PIXELS_PER_MINUTE - 2)}px` };
+                            
+                            const hasBreak = (subtask.breakMinutes ?? 0) > 0;
+                            const breakStyle: React.CSSProperties = hasBreak ? {
+                                top: `${(minutesFromStart + subtask.durationMinutes) * PIXELS_PER_MINUTE}px`,
+                                height: `${Math.max(2, subtask.breakMinutes! * PIXELS_PER_MINUTE - 2)}px`
+                            } : {};
+
                             return (
-                                <Tooltip key={subtask.id}>
-                                    <TooltipTrigger asChild>
-                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} style={style} className={cn("absolute inset-x-2 rounded-lg shadow-lg flex items-center justify-center overflow-hidden border cursor-pointer", getPriorityClass(subtask.priority, subtask.completed, subtask.hasConflict))}>
-                                            {subtask.durationMinutes * PIXELS_PER_MINUTE > 18 && <span className="text-xs font-semibold overflow-hidden text-ellipsis whitespace-nowrap px-1">{subtask.text}</span>}
-                                        </motion.div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right" className="bg-background border-primary shadow-lg">
-                                         <div className="p-2 text-sm"><p className="font-bold text-base mb-2">{subtask.text}</p><div className="space-y-1.5 text-muted-foreground"><div className="flex items-center"><Briefcase className="h-4 w-4 mr-2" /><span>From: <span className="font-semibold text-foreground">{subtask.parentTaskText}</span></span></div><div className="flex items-center"><PriorityIcon priority={subtask.priority} /><span>Priority: <span className="font-semibold text-foreground capitalize">{subtask.priority}</span></span></div><div className="flex items-center"><Clock className="h-4 w-4 mr-2" /><span>Time: <span className="font-semibold text-foreground">{formatTimelineTime(subtask.scheduledStartTime)} - {formatTimelineTime(addMinutes(startTime, subtask.durationMinutes).toISOString())}</span></span></div></div></div>
-                                    </TooltipContent>
-                                </Tooltip>
+                                // Use React.Fragment to group task and its break
+                                <React.Fragment key={subtask.id}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} style={taskStyle} className={cn("absolute inset-x-2 rounded-lg shadow-lg flex items-center justify-center overflow-hidden border cursor-pointer", getPriorityClass(subtask.priority, subtask.completed, subtask.hasConflict))}>
+                                                {subtask.durationMinutes * PIXELS_PER_MINUTE > 18 && <span className="text-xs font-semibold overflow-hidden text-ellipsis whitespace-nowrap px-1">{subtask.text}</span>}
+                                            </motion.div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" className="bg-background border-primary shadow-lg">
+                                             <div className="p-2 text-sm"><p className="font-bold text-base mb-2">{subtask.text}</p><div className="space-y-1.5 text-muted-foreground"><div className="flex items-center"><Briefcase className="h-4 w-4 mr-2" /><span>From: <span className="font-semibold text-foreground">{subtask.parentTaskText}</span></span></div><div className="flex items-center"><PriorityIcon priority={subtask.priority} /><span>Priority: <span className="font-semibold text-foreground capitalize">{subtask.priority}</span></span></div><div className="flex items-center"><Clock className="h-4 w-4 mr-2" /><span>Time: <span className="font-semibold text-foreground">{formatTimelineTime(subtask.scheduledStartTime)} - {formatTimelineTime(addMinutes(startTime, subtask.durationMinutes).toISOString())}</span></span></div></div></div>
+                                        </TooltipContent>
+                                    </Tooltip>
+
+                                    {/* NEW: Render break block if it exists */}
+                                    {hasBreak && (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <div style={breakStyle} className="absolute inset-x-2 rounded-lg bg-green-200/50 dark:bg-green-900/50 border border-dashed border-green-500/50 flex items-center justify-center">
+                                                    <Coffee className="h-4 w-4 text-green-700 dark:text-green-300" />
+                                                </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right" className="bg-background border-green-500 shadow-lg">
+                                                <p>{subtask.breakMinutes} minute break</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    )}
+                                </React.Fragment>
                             );
                         })}
                     </div>
@@ -169,6 +194,7 @@ const VisualDayTimeline = ({ subtasks, currentDateForView, onDropTask }: { subta
         </TooltipProvider>
     );
 };
+
 
 const FocusModeView = ({ task, onExit }: { task: EnrichedSubTask, onExit: () => void }) => {
     const [timeLeft, setTimeLeft] = useState(differenceInSeconds(addMinutes(new Date(), task.durationMinutes || 25), new Date()));
@@ -269,7 +295,6 @@ export function TimelineClock({ tasks: initialTasks }: { tasks: Task[] }) {
               <CalendarClock size={22} />
           </Button>
       </DialogTrigger>
-      {/* FINAL FINAL STYLING: h-auto with max-h-[90vh] for flexible and safe mobile height */}
       <DialogContent className="max-w-7xl w-[95%] h-auto max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogTitle className="sr-only">Daily Timeline View</DialogTitle>
         <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none z-20">
