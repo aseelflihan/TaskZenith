@@ -1,3 +1,5 @@
+// D:\applications\tasks\TaskZenith\src\lib\actions.ts
+
 "use server";
 
 import { redirect } from 'next/navigation';
@@ -8,7 +10,8 @@ import type { Task } from "./types";
 import type { TaskFormData } from "@/components/tasks/TaskForm";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { addMinutes, format, parse, parseISO, isValid } from 'date-fns';
+// CHANGED: Imported setHours and setMinutes for more reliable time setting
+import { addMinutes, format, parse, parseISO, isValid, setHours, setMinutes, startOfDay } from 'date-fns';
 
 const getFlows = async () => {
     const { prioritizeTasks: prioritizeTasksFlow } = await import("@/ai/flows/prioritize-tasks");
@@ -17,6 +20,7 @@ const getFlows = async () => {
     return { prioritizeTasksFlow, generateProductivityReportsFlow, parseNaturalLanguageTasks };
 };
 
+// ... (getPrioritizedTasks and getProductivityReport functions remain unchanged) ...
 export async function getPrioritizedTasks(tasks: Task[], context: string): Promise<{ prioritizedTasks?: string[]; reasoning?: string; error?: string }> {
   try {
     const { prioritizeTasksFlow } = await getFlows();
@@ -78,79 +82,82 @@ export async function getProductivityReport(tasks: Task[]): Promise<{ analysis?:
   }
 }
 
+
+// ==================================================================
+// *** MODIFIED FUNCTION: generateTasksFromNaturalLanguage ***
+// ==================================================================
 export async function generateTasksFromNaturalLanguage(userInput: string, existingTasks: Task[]): Promise<{ tasksData?: TaskFormData[]; error?: string }> {
   try {
     const { parseNaturalLanguageTasks } = await getFlows();
     
-    let nextAvailableTime = new Date();
-    
+    // 1. Calculate the next available time slot based on existing tasks
+    let nextAvailableTime = new Date(); // Default to now
     existingTasks.forEach(task => {
       task.subtasks.forEach(st => {
         let subtaskEndTime: Date | null = null;
-        if (st.completed && st.actualEndTime) {
-          const actualEnd = parseISO(st.actualEndTime);
-          if (isValid(actualEnd)) {
-            subtaskEndTime = addMinutes(actualEnd, st.breakMinutes ?? 0);
-          }
-        } 
-        else if (!st.completed && st.scheduledStartTime) {
-          const scheduledStart = parseISO(st.scheduledStartTime);
-          if (isValid(scheduledStart)) {
-            const totalDuration = (st.durationMinutes ?? 0) + (st.breakMinutes ?? 0);
-            subtaskEndTime = addMinutes(scheduledStart, totalDuration);
-          }
+        if (st.scheduledStartTime) {
+            const scheduledStart = parseISO(st.scheduledStartTime);
+            if (isValid(scheduledStart)) {
+                // End time is start time + duration + break
+                const totalDuration = (st.durationMinutes ?? 25) + (st.breakMinutes ?? 10);
+                subtaskEndTime = addMinutes(scheduledStart, totalDuration);
+            }
         }
-        
         if (subtaskEndTime && subtaskEndTime > nextAvailableTime) {
-          nextAvailableTime = subtaskEndTime;
+            nextAvailableTime = subtaskEndTime;
         }
       });
     });
 
+    // 2. Call the AI to parse the user's input
     const currentDate = format(new Date(), 'yyyy-MM-dd');
     const aiResult = await parseNaturalLanguageTasks({ userInput, currentDate });
 
     if (!aiResult || aiResult.length === 0) {
-      return { error: "AI could not identify any tasks from your input." };
+      return { error: "AI could not identify any tasks from your input. Please try rephrasing." };
     }
 
     const allTasksData: TaskFormData[] = [];
     
+    // This variable will track the start time for the *next group* of tasks.
+    // It starts as the next available slot, but will be updated by each group.
+    let cursorTime = nextAvailableTime;
+
+    // 3. Process each task group returned by the AI
     for (const taskGroup of aiResult) {
+      let groupStartTime: Date;
+
+      // 3a. Determine the starting point for this specific group
+      if (taskGroup.deadline && taskGroup.startTime) {
+        // USER-SPECIFIED TIME: The AI found a specific date and time. Use it.
+        const [hour, minute] = taskGroup.startTime.split(':').map(Number);
+        const dateFromAI = parse(taskGroup.deadline, 'yyyy-MM-dd', new Date());
+        groupStartTime = setMinutes(setHours(startOfDay(dateFromAI), hour), minute);
+      } else {
+        // AUTO-SCHEDULE: No time specified by user, so use the next available slot.
+        groupStartTime = cursorTime;
+      }
+      
+      let subtaskCursorTime = groupStartTime; // The running time for subtasks within this group
+
       const scheduledSubtasks = taskGroup.subtasks.map(st => {
-        const subtask = { ...st }; 
-
-        if (!subtask.scheduledTime) {
-          subtask.deadline = format(nextAvailableTime, 'yyyy-MM-dd');
-          subtask.scheduledTime = format(nextAvailableTime, 'HH:mm');
-        }
-
-        const taskStartTime = parse(
-          `${subtask.deadline || format(nextAvailableTime, 'yyyy-MM-dd')} ${subtask.scheduledTime}`,
-          'yyyy-MM-dd HH:mm',
-          new Date()
-        );
-
-        // Ensure duration and breakTime are numbers, providing defaults if undefined
-        const duration = subtask.durationMinutes ?? 25;
-        const breakTime = subtask.breakMinutes ?? 0;
+        const duration = st.durationMinutes ?? 25;
+        const breakTime = st.breakMinutes ?? 10;
         
-        const taskEndTime = addMinutes(taskStartTime, duration + breakTime);
+        const currentSubtaskStartTime = subtaskCursorTime;
 
-        if (taskEndTime > nextAvailableTime) {
-          nextAvailableTime = taskEndTime;
-        }
-        
+        // The next subtask will start after this one ends (including its break)
+        subtaskCursorTime = addMinutes(currentSubtaskStartTime, duration + breakTime);
+
         return {
           id: crypto.randomUUID(),
-          text: subtask.text,
+          text: st.text,
           completed: false,
-          // Pass the potentially undefined values. The final handler (in page.tsx)
-          // will set final, safe defaults if needed.
           durationMinutes: duration,
           breakMinutes: breakTime,
-          deadline: subtask.deadline,
-          scheduledTime: subtask.scheduledTime,
+          // Use the calculated values for this specific subtask
+          deadline: format(currentSubtaskStartTime, 'yyyy-MM-dd'),
+          scheduledTime: format(currentSubtaskStartTime, 'HH:mm'),
         };
       });
 
@@ -161,6 +168,12 @@ export async function generateTasksFromNaturalLanguage(userInput: string, existi
       };
 
       allTasksData.push(taskData);
+
+      // 3b. Update the main cursor for the next task group
+      // The next group will start after all subtasks of the current group are finished.
+      if (subtaskCursorTime > cursorTime) {
+        cursorTime = subtaskCursorTime;
+      }
     }
 
     return { tasksData: allTasksData };
@@ -171,6 +184,8 @@ export async function generateTasksFromNaturalLanguage(userInput: string, existi
     return { error: `Failed to generate tasks from AI: ${errorMessage}. Please try again.` };
   }
 }
+
+// ... (All other functions like signUpUser, getTasksForUser, addTask, etc. remain unchanged) ...
 
 interface SignUpUserInput {
   name: string;
@@ -183,22 +198,14 @@ export async function signUpUser(input: SignUpUserInput): Promise<{ userId?: str
   return { error: 'Server-side signup is currently disabled. Signup should occur client-side.' };
 }
 
-// تحويل جميع حقول Timestamp إلى string بتنسيق ISO
 function convertTimestamps(obj: any): any {
   if (obj == null) return obj;
   if (Array.isArray(obj)) return obj.map(convertTimestamps);
   if (typeof obj === 'object') {
     const newObj: any = {};
     for (const key in obj) {
-      if (
-        obj[key] &&
-        typeof obj[key] === 'object' &&
-        '_seconds' in obj[key] &&
-        '_nanoseconds' in obj[key]
-      ) {
-        // تحويل إلى تنسيق ISO string وطباعة للتحقق
+      if (obj[key] && typeof obj[key] === 'object' && '_seconds' in obj[key] && '_nanoseconds' in obj[key]) {
         const isoString = new Date(obj[key]._seconds * 1000).toISOString();
-        console.log(`Converting timestamp for ${key}:`, isoString);
         newObj[key] = isoString;
       } else {
         newObj[key] = convertTimestamps(obj[key]);
@@ -209,23 +216,14 @@ function convertTimestamps(obj: any): any {
   return obj;
 }
 
-// جلب جميع المهام الخاصة بمستخدم مع تحويل التواريخ
 export async function getTasksForUser(userId: string): Promise<Task[]> {
-  console.log("[getTasksForUser] Fetching tasks for userId:", userId);
   try {
     const tasksRef = adminDb.collection("tasks");
-    const snapshot = await tasksRef.where("userId", "==", userId).get();
-    console.log("[getTasksForUser] Found", snapshot.size, "tasks");
-    
+    const snapshot = await tasksRef.where("userId", "==", userId).orderBy("createdAt", "desc").get(); // Added orderBy
     const tasks = snapshot.docs.map(doc => {
       const data = doc.data();
-      return convertTimestamps({ 
-        id: doc.id,
-        ...data
-      }) as Task;
+      return convertTimestamps({ id: doc.id, ...data }) as Task;
     });
-    
-    console.log("[getTasksForUser] Processed tasks:", tasks);
     return tasks;
   } catch (error) {
     console.error("[getTasksForUser] Error:", error);
@@ -233,71 +231,31 @@ export async function getTasksForUser(userId: string): Promise<Task[]> {
   }
 }
 
-// إضافة مهمة جديدة مع تحسينات
 export async function addTask(userId: string, taskData: TaskFormData): Promise<{ taskId?: string; error?: string }> {
   try {
-    console.log("[addTask] Starting to add task for userId:", userId);
     const tasksRef = adminDb.collection("tasks");
+    if (!userId) return { error: "User ID is required" };
+    if (!taskData.text) return { error: "Task text is required" };
     
-    if (!userId) {
-      console.error("[addTask] Missing userId");
-      return { error: "User ID is required" };
-    }
-
-    if (!taskData.text) {
-      console.error("[addTask] Missing task text");
-      return { error: "Task text is required" };
-    }
-    
-    // معالجة المهام الفرعية وإضافة الجدول الزمني
     const currentDate = new Date();
     const subtasksWithSchedule = taskData.subtasks.map((subtask, index) => {
-      console.log(`[addTask] Processing subtask ${index + 1}:`, {
-        original: subtask,
-        deadline: subtask.deadline,
-        scheduledTime: subtask.scheduledTime
-      });
-
-      // تحديد وقت الجدولة
       let scheduledDateTime: Date;
-      
       if (subtask.scheduledTime && subtask.deadline) {
-        try {
-          // Attempt to parse date and time directly from YYYY-MM-DD HH:mm
-          scheduledDateTime = parse(
-            `${subtask.deadline} ${subtask.scheduledTime}`,
-            'yyyy-MM-dd HH:mm',
-            new Date()
-          );
-
-          console.log(`[addTask] Parsed datetime for subtask ${index + 1}:`, {
-            deadline: subtask.deadline,
-            scheduledTime: subtask.scheduledTime,
-            result: scheduledDateTime,
-            isValid: isValid(scheduledDateTime)
-          });
-        } catch (error) {
-          console.error(`[addTask] Error parsing date for subtask ${index + 1}:`, error);
-          scheduledDateTime = addMinutes(currentDate, 30 * (index + 1));
-        }
+        scheduledDateTime = parse(`${subtask.deadline} ${subtask.scheduledTime}`, 'yyyy-MM-dd HH:mm', new Date());
       } else {
         scheduledDateTime = addMinutes(currentDate, 30 * (index + 1));
       }
-
-      // تأكد من صحة التاريخ
       if (!isValid(scheduledDateTime)) {
-        console.warn(`[addTask] Invalid date for subtask ${index + 1}, using default`);
         scheduledDateTime = addMinutes(currentDate, 30 * (index + 1));
       }
-
-      const result = {
+      const newSubtask = {
         ...subtask,
+        id: subtask.id || crypto.randomUUID(),
         scheduledTime: format(scheduledDateTime, 'HH:mm'),
-        deadline: format(scheduledDateTime, 'yyyy-MM-dd')
+        deadline: format(scheduledDateTime, 'yyyy-MM-dd'),
+        scheduledStartTime: scheduledDateTime.toISOString(),
       };
-
-      console.log(`[addTask] Final subtask ${index + 1} data:`, result);
-      return result;
+      return newSubtask;
     });
 
     const newTask = {
@@ -305,15 +263,13 @@ export async function addTask(userId: string, taskData: TaskFormData): Promise<{
       userId,
       priority: taskData.priority || 'medium',
       subtasks: subtasksWithSchedule,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      completed: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
-    console.log("[addTask] Attempting to save task:", newTask);
     const docRef = await tasksRef.add(newTask);
-    console.log("[addTask] Task added successfully with ID:", docRef.id);
-    revalidatePath('/app'); // Add this line
-    
+    revalidatePath('/'); // Revalidate the root layout
     return { taskId: docRef.id };
   } catch (error) {
     console.error("[addTask] Error adding task:", error);
@@ -321,42 +277,119 @@ export async function addTask(userId: string, taskData: TaskFormData): Promise<{
   }
 }
 
-// تحديث مهمة
-export async function updateTask(userId: string, taskId: string, data: Partial<Task>): Promise<void> {
-  const docRef = adminDb.collection("tasks").doc(taskId);
-  const doc = await docRef.get();
-  if (!doc.exists || doc.data()?.userId !== userId) throw new Error("Unauthorized");
-  await docRef.update(data);
-  revalidatePath('/app'); // Add this line
+export async function updateTask(userId: string, taskId: string, data: Partial<Task>): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const docRef = adminDb.collection("tasks").doc(taskId);
+    const doc = await docRef.get();
+    if (!doc.exists || doc.data()?.userId !== userId) {
+        return { error: "Unauthorized or task not found." };
+    }
+    await docRef.update({ ...data, updatedAt: new Date().toISOString() });
+    revalidatePath('/');
+    return { success: true };
+  } catch (error) {
+    console.error("[updateTask] Error:", error);
+    return { error: "Failed to update task." };
+  }
 }
 
-// حذف مهمة
 export async function deleteTask(userId: string, taskId: string): Promise<{ success?: boolean; error?: string }> {
   try {
-    console.log("[deleteTask] Starting to delete task:", taskId, "for user:", userId);
-    const tasksRef = adminDb.collection("tasks");
-    
-    // التحقق من وجود المهمة وملكيتها للمستخدم
-    const taskDoc = await tasksRef.doc(taskId).get();
-    if (!taskDoc.exists) {
-      console.error("[deleteTask] Task not found:", taskId);
-      return { error: "Task not found" };
+    const tasksRef = adminDb.collection("tasks").doc(taskId);
+    const taskDoc = await tasksRef.get();
+    if (!taskDoc.exists || taskDoc.data()?.userId !== userId) {
+      return { error: "Unauthorized or task not found." };
     }
-
-    const taskData = taskDoc.data();
-    if (taskData?.userId !== userId) {
-      console.error("[deleteTask] Task does not belong to user:", userId);
-      return { error: "Unauthorized to delete this task" };
-    }    // حذف المهمة
-    await tasksRef.doc(taskId).delete();
-    console.log("[deleteTask] Successfully deleted task:", taskId);
-
-    // Revalidate the path for the Daily Timeline page to ensure data is fresh
-    revalidatePath('/app');
-
+    await tasksRef.delete();
+    revalidatePath('/');
     return { success: true };
   } catch (error) {
     console.error("[deleteTask] Error deleting task:", error);
     return { error: "Failed to delete task" };
   }
+}
+
+// ==================================================================
+// *** NEW SERVER ACTIONS FOR ADVANCED TIMELINE FEATURES ***
+// ==================================================================
+
+/**
+ * Updates the schedule for a single subtask. Used for Drag & Drop.
+ */
+export async function updateTaskSchedule(data: { subtaskId: string, parentTaskId: string, newStartTime: string }): Promise<{ success?: boolean; error?: string }> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return { error: "User not authenticated." };
+  }
+  const userId = session.user.id;
+
+  try {
+    const taskRef = adminDb.collection("tasks").doc(data.parentTaskId);
+    const taskDoc = await taskRef.get();
+
+    if (!taskDoc.exists || taskDoc.data()?.userId !== userId) {
+      return { error: "Unauthorized or parent task not found." };
+    }
+
+    const parentTask = taskDoc.data() as Task;
+    const newStartTime = parseISO(data.newStartTime);
+
+    const updatedSubtasks = parentTask.subtasks.map(st => {
+      if (st.id === data.subtaskId) {
+        return {
+          ...st,
+          scheduledStartTime: newStartTime.toISOString(),
+          deadline: format(newStartTime, 'yyyy-MM-dd'),
+          scheduledTime: format(newStartTime, 'HH:mm'),
+        };
+      }
+      return st;
+    });
+
+    await taskRef.update({
+      subtasks: updatedSubtasks,
+      updatedAt: new Date().toISOString(),
+    });
+
+    revalidatePath('/');
+    return { success: true };
+
+  } catch (error) {
+    console.error("[updateTaskSchedule] Error:", error);
+    return { error: "Failed to update task schedule." };
+  }
+}
+
+/**
+ * Placeholder for an AI-powered day optimization logic.
+ * This function is called when the "Optimize My Day" button is clicked.
+ * Currently, it just logs the request. You can expand this with real AI logic.
+ */
+export async function optimizeDaySchedule(data: { tasks: Task[], date: string }): Promise<{ success?: boolean; error?: string }> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return { error: "User not authenticated." };
+  }
+  
+  // In a real application, you would:
+  // 1. Get all unscheduled tasks for the user.
+  // 2. Get all scheduled tasks for the given date to identify free time slots.
+  // 3. Call an AI model (like the ones from `getFlows`) with the list of unscheduled tasks and free slots.
+  // 4. The AI would return an optimized schedule.
+  // 5. You would then update all the affected tasks in Firebase.
+  
+  console.log("===================================");
+  console.log("🚀 AI Day Optimization Triggered 🚀");
+  console.log("User:", session.user.email);
+  console.log("Date to optimize:", data.date);
+  console.log("This is a placeholder. No tasks were actually changed.");
+  console.log("===================================");
+
+  // We are not changing data, but we revalidate to show a "refresh" effect.
+  revalidatePath('/');
+
+  // Simulate a delay to make it feel like AI is "thinking"
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  return { success: true };
 }
