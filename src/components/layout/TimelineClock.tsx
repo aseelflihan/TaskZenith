@@ -1,5 +1,6 @@
 // D:\applications\tasks\TaskZenith\src\components\layout\TimelineClock.tsx
-// FINAL & COMPLETE version with layout fix and zoom removal, keeping all features.
+// FINAL-FINAL-FINAL VERSION: Corrected all imports and component names to ensure
+// the close button and accessibility features work perfectly.
 
 "use client";
 
@@ -7,17 +8,13 @@ import * as React from 'react';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, Moon, CalendarDays, CheckCircle, Zap, Clock, Briefcase, Coffee as CoffeeIcon, Info, ListChecks, CheckSquare, ChevronLeft, ChevronRight, PlusCircle, CalendarClock, RefreshCw, Star, Shield, ArrowDown, AlertTriangle, Target, BrainCircuit, X } from 'lucide-react';
-import { 
-  subDays, addDays, startOfDay, addMinutes, isValid, parseISO, 
-  format, isSameDay, getHours, getMinutes, setHours as dateFnsSetHours, 
-  parse, areIntervalsOverlapping, differenceInSeconds
-} from 'date-fns';
+import { Dialog, DialogContent, DialogTrigger, DialogClose, DialogTitle } from "@/components/ui/dialog";
+import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw, AlertTriangle, Target, BrainCircuit, X, Star, Shield, ArrowDown, Briefcase, Clock, CalendarClock } from 'lucide-react';
+import { subDays, addDays, startOfDay, addMinutes, isValid, parseISO, format, isSameDay, getHours, getMinutes, parse, areIntervalsOverlapping, differenceInSeconds } from 'date-fns';
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle as RenamedCardTitle } from "@/components/ui/card";
+import { AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Task, SubTask, TaskPriority } from "@/lib/types";
@@ -26,17 +23,9 @@ import { useToast } from "@/hooks/use-toast";
 import { getTasksForUser, updateTaskSchedule, optimizeDaySchedule } from '@/lib/actions';
 
 // --- HELPER COMPONENTS AND FUNCTIONS ---
-
 const formatTimelineTime = (isoString: string | undefined): string => {
     if (!isoString) return "";
-    try { const date = parseISO(isoString); return isValid(date) ? format(date, "HH:mm") : ""; } catch { return ""; }
-};
-
-const formatMinutesToHoursAndMinutes = (totalMinutes: number) => {
-    if (totalMinutes <= 0) return "0m";
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return `${hours > 0 ? `${hours}h ` : ''}${minutes > 0 ? `${minutes}m` : ''}`.trim();
+    try { const date = parseISO(isoString); return isValid(date) ? format(date, "h:mm a") : ""; } catch { return ""; }
 };
 
 interface EnrichedSubTask extends SubTask {
@@ -66,6 +55,15 @@ const PriorityIcon = ({ priority }: { priority: TaskPriority }) => {
     }
 }
 
+const getTimelineGradientClass = (date: Date): string => {
+    if (!isSameDay(date, new Date())) return 'bg-background/50';
+    const hour = getHours(new Date());
+    if (hour >= 5 && hour < 8) return 'bg-gradient-to-b from-sky-100 to-blue-200 dark:from-sky-900 dark:to-blue-950';
+    if (hour >= 8 && hour < 17) return 'bg-background/50';
+    if (hour >= 17 && hour < 20) return 'bg-gradient-to-b from-blue-200 to-orange-200 dark:from-indigo-900 dark:to-orange-950';
+    return 'bg-gradient-to-b from-slate-800 to-slate-950 dark:from-slate-900 dark:to-slate-950';
+};
+
 const DraggableSubTaskItem = ({ subtask }: { subtask: EnrichedSubTask }) => {
     const onDragStart = (e: React.DragEvent<HTMLDivElement>) => {
         e.dataTransfer.setData("subtaskId", subtask.id);
@@ -93,20 +91,21 @@ const StaticSubTaskItem = ({ subtask }: { subtask: EnrichedSubTask }) => (
     </div>
 );
 
-
 const VisualDayTimeline = ({ subtasks, currentDateForView, onDropTask }: { subtasks: EnrichedSubTask[], currentDateForView: Date, onDropTask: (subtaskId: string, parentTaskId: string, newStartTime: Date) => void }) => {
-    const timelineContainerRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const timelineEventsContainerRef = useRef<HTMLDivElement>(null);
     const nowLineRef = useRef<HTMLDivElement>(null);
-    const zoomLevel = 30; // Fixed zoom level
-
-    const SEGMENT_HEIGHT_PX = 50;
-    const PIXELS_PER_MINUTE = SEGMENT_HEIGHT_PX / zoomLevel;
+    const zoomLevel = 30;
+    const PIXELS_PER_MINUTE = 50 / zoomLevel;
 
     useEffect(() => {
-        if (nowLineRef.current && timelineContainerRef.current && isSameDay(currentDateForView, new Date())) {
-            timelineContainerRef.current.scrollTop = nowLineRef.current.offsetTop - (timelineContainerRef.current.clientHeight / 3);
+        if (nowLineRef.current && scrollContainerRef.current && isSameDay(currentDateForView, new Date())) {
+            scrollContainerRef.current.scrollTop = nowLineRef.current.offsetTop - (scrollContainerRef.current.clientHeight / 3);
+        } else if (scrollContainerRef.current) {
+            const eightAmPixels = 8 * 60 * PIXELS_PER_MINUTE;
+            scrollContainerRef.current.scrollTop = eightAmPixels;
         }
-    }, [subtasks, currentDateForView]); 
+    }, [subtasks, currentDateForView, PIXELS_PER_MINUTE]); 
 
     const onDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; };
     
@@ -114,9 +113,9 @@ const VisualDayTimeline = ({ subtasks, currentDateForView, onDropTask }: { subta
         e.preventDefault();
         const subtaskId = e.dataTransfer.getData("subtaskId");
         const parentTaskId = e.dataTransfer.getData("parentTaskId");
-        if (!subtaskId || !timelineContainerRef.current) return;
-        const rect = timelineContainerRef.current.getBoundingClientRect();
-        const dropY = e.clientY - rect.top + timelineContainerRef.current.scrollTop;
+        if (!subtaskId || !timelineEventsContainerRef.current || !scrollContainerRef.current) return;
+        const rect = timelineEventsContainerRef.current.getBoundingClientRect();
+        const dropY = e.clientY - rect.top + scrollContainerRef.current.scrollTop;
         const minutesFromStart = dropY / PIXELS_PER_MINUTE;
         const snappedMinutes = Math.round(minutesFromStart / 15) * 15;
         const newStartTime = addMinutes(startOfDay(currentDateForView), snappedMinutes);
@@ -124,39 +123,47 @@ const VisualDayTimeline = ({ subtasks, currentDateForView, onDropTask }: { subta
     };
     
     const minutesNow = getHours(new Date()) * 60 + getMinutes(new Date());
+    const backgroundClass = getTimelineGradientClass(currentDateForView);
 
     return (
         <TooltipProvider delayDuration={150}>
-            <div ref={timelineContainerRef} onDragOver={onDragOver} onDrop={onDrop} className="relative h-full w-full overflow-y-auto border rounded-lg p-2 bg-background">
-                <div className="relative" style={{ height: `${24 * (60 / zoomLevel) * SEGMENT_HEIGHT_PX}px` }}>
-                    {Array.from({ length: 24 * (60 / zoomLevel) }).map((_, index) => {
-                        const date = addMinutes(startOfDay(currentDateForView), index * zoomLevel);
-                        const isFullHour = getMinutes(date) === 0;
-                        return (<div key={index} style={{ height: `${SEGMENT_HEIGHT_PX}px` }} className={cn("border-b border-dashed", isFullHour ? "border-muted-foreground/30" : "border-muted-foreground/10")}>
-                            {isFullHour && <span className="absolute -top-2 text-xs text-muted-foreground font-medium" style={{ left: `2px`, transform: `translateY(${index * SEGMENT_HEIGHT_PX}px)` }}>{format(date, 'HH:00')}</span>}
-                        </div>);
-                    })}
-                    
-                    {isSameDay(currentDateForView, new Date()) && <div ref={nowLineRef} className="absolute w-full z-30" style={{ top: `${minutesNow * PIXELS_PER_MINUTE}px`, left: `50px`, right: '10px' }}><div className="h-0.5 bg-destructive rounded-full"></div></div>}
-
-                    {subtasks.map(subtask => {
-                        if (!subtask.scheduledStartTime || !subtask.durationMinutes) return null;
-                        const startTime = parseISO(subtask.scheduledStartTime);
-                        const minutesFromStart = getHours(startTime) * 60 + getMinutes(startTime);
-                        const style: React.CSSProperties = { top: `${minutesFromStart * PIXELS_PER_MINUTE}px`, height: `${Math.max(2, subtask.durationMinutes * PIXELS_PER_MINUTE - 2)}px`, position: 'absolute', left: `50px`, right: '10px', zIndex: 10 };
-                        return (
-                            <Tooltip key={subtask.id}>
-                                <TooltipTrigger asChild>
-                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} style={style} className={cn("rounded-sm shadow-sm flex items-center justify-center overflow-hidden border cursor-pointer", getPriorityClass(subtask.priority, subtask.completed, subtask.hasConflict))}>
-                                        {subtask.durationMinutes * PIXELS_PER_MINUTE > 18 && <span className="text-xs font-semibold overflow-hidden text-ellipsis whitespace-nowrap px-1">{subtask.text}</span>}
-                                    </motion.div>
-                                </TooltipTrigger>
-                                <TooltipContent side="right" className="bg-background border-primary shadow-lg">
-                                     <div className="p-2 text-sm"><p className="font-bold text-base mb-2">{subtask.text}</p><div className="space-y-1.5 text-muted-foreground"><div className="flex items-center"><Briefcase className="h-4 w-4 mr-2" /><span>From: <span className="font-semibold text-foreground">{subtask.parentTaskText}</span></span></div><div className="flex items-center"><PriorityIcon priority={subtask.priority} /><span>Priority: <span className="font-semibold text-foreground capitalize">{subtask.priority}</span></span></div><div className="flex items-center"><Clock className="h-4 w-4 mr-2" /><span>Time: <span className="font-semibold text-foreground">{format(startTime, 'HH:mm')} - {format(addMinutes(startTime, subtask.durationMinutes), 'HH:mm')}</span></span></div></div></div>
-                                </TooltipContent>
-                            </Tooltip>
-                        );
-                    })}
+            <div ref={scrollContainerRef} className={cn("relative h-full w-full overflow-y-auto rounded-lg transition-colors duration-1000 p-2", backgroundClass)}>
+                <div className="grid grid-cols-[auto_1fr]" style={{ height: `${24 * (60 / zoomLevel) * 50}px` }}>
+                    <div className="relative pr-4 border-r">
+                        {Array.from({ length: 24 }).map((_, hour) => (
+                            <div key={`time-${hour}`} style={{ height: `${60 * PIXELS_PER_MINUTE}px` }} className="flex items-start justify-end pt-0.5">
+                                <span className="text-xs text-muted-foreground font-medium -translate-y-1/2">{format(addMinutes(startOfDay(new Date()), hour * 60), "h a")}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div ref={timelineEventsContainerRef} onDragOver={onDragOver} onDrop={onDrop} className="relative">
+                        {Array.from({ length: 24 * 2 }).map((_, index) => (
+                            <div key={`line-${index}`} style={{ height: `${30 * PIXELS_PER_MINUTE}px` }} className={cn("border-b border-dashed", index % 2 === 1 ? "border-muted-foreground/30" : "border-muted-foreground/10")}></div>
+                        ))}
+                        {isSameDay(currentDateForView, new Date()) && 
+                            <div ref={nowLineRef} className="absolute inset-x-0 z-30" style={{ top: `${minutesNow * PIXELS_PER_MINUTE}px` }}>
+                                <div className="h-0.5 bg-destructive rounded-full"></div>
+                            </div>
+                        }
+                        {subtasks.map(subtask => {
+                            if (!subtask.scheduledStartTime || !subtask.durationMinutes) return null;
+                            const startTime = parseISO(subtask.scheduledStartTime);
+                            const minutesFromStart = getHours(startTime) * 60 + getMinutes(startTime);
+                            const style: React.CSSProperties = { top: `${minutesFromStart * PIXELS_PER_MINUTE}px`, height: `${Math.max(2, subtask.durationMinutes * PIXELS_PER_MINUTE - 2)}px` };
+                            return (
+                                <Tooltip key={subtask.id}>
+                                    <TooltipTrigger asChild>
+                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} style={style} className={cn("absolute inset-x-2 rounded-lg shadow-lg flex items-center justify-center overflow-hidden border cursor-pointer", getPriorityClass(subtask.priority, subtask.completed, subtask.hasConflict))}>
+                                            {subtask.durationMinutes * PIXELS_PER_MINUTE > 18 && <span className="text-xs font-semibold overflow-hidden text-ellipsis whitespace-nowrap px-1">{subtask.text}</span>}
+                                        </motion.div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" className="bg-background border-primary shadow-lg">
+                                         <div className="p-2 text-sm"><p className="font-bold text-base mb-2">{subtask.text}</p><div className="space-y-1.5 text-muted-foreground"><div className="flex items-center"><Briefcase className="h-4 w-4 mr-2" /><span>From: <span className="font-semibold text-foreground">{subtask.parentTaskText}</span></span></div><div className="flex items-center"><PriorityIcon priority={subtask.priority} /><span>Priority: <span className="font-semibold text-foreground capitalize">{subtask.priority}</span></span></div><div className="flex items-center"><Clock className="h-4 w-4 mr-2" /><span>Time: <span className="font-semibold text-foreground">{formatTimelineTime(subtask.scheduledStartTime)} - {formatTimelineTime(addMinutes(startTime, subtask.durationMinutes).toISOString())}</span></span></div></div></div>
+                                    </TooltipContent>
+                                </Tooltip>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </TooltipProvider>
@@ -165,16 +172,13 @@ const VisualDayTimeline = ({ subtasks, currentDateForView, onDropTask }: { subta
 
 const FocusModeView = ({ task, onExit }: { task: EnrichedSubTask, onExit: () => void }) => {
     const [timeLeft, setTimeLeft] = useState(differenceInSeconds(addMinutes(new Date(), task.durationMinutes || 25), new Date()));
-
     useEffect(() => {
         if (timeLeft <= 0) return;
         const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
         return () => clearInterval(timer);
     }, [timeLeft]);
-
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
-
     return (
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute inset-0 bg-background z-50 flex flex-col items-center justify-center p-8">
             <Button onClick={onExit} variant="ghost" className="absolute top-4 right-4"><X className="h-6 w-6" /> Exit Focus Mode</Button>
@@ -188,13 +192,10 @@ const FocusModeView = ({ task, onExit }: { task: EnrichedSubTask, onExit: () => 
     );
 };
 
-
-// --- MAIN COMPONENT ---
 export function TimelineClock({ tasks: initialTasks }: { tasks: Task[] }) {
   const { data: session } = useSession();
   const { toast } = useToast();
-  
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [currentDateForView, setCurrentDateForView] = useState<Date>(startOfDay(new Date()));
@@ -230,7 +231,7 @@ export function TimelineClock({ tasks: initialTasks }: { tasks: Task[] }) {
     const scheduled = enrichedSubTasks.filter(st => !st.completed && st.scheduledStartTime && isValid(parseISO(st.scheduledStartTime)) && isSameDay(parseISO(st.scheduledStartTime), displayDate));
     return {
       scheduledForDay: scheduled,
-      unscheduledActive: enrichedSubTasks.filter(st => !st.completed && !st.scheduledStartTime),
+      unscheduledActive: enrichedSubTasks.filter(st => !st.completed && (!st.scheduledStartTime || !isValid(parseISO(st.scheduledStartTime!)))),
       completedForDay: enrichedSubTasks.filter(st => st.completed && st.actualEndTime && isValid(parseISO(st.actualEndTime)) && isSameDay(parseISO(st.actualEndTime), displayDate)),
       conflictsCount: scheduled.filter(st => st.hasConflict).length
     };
@@ -241,10 +242,10 @@ export function TimelineClock({ tasks: initialTasks }: { tasks: Task[] }) {
     return totalToday > 0 ? (completedForDay.length / totalToday) * 100 : 0;
   }, [scheduledForDay, completedForDay]);
 
-  const handleOpenChange = (isOpen: boolean) => { setIsModalOpen(isOpen); if (isOpen) { fetchAndSetTasks(); setIsFocusMode(false); } };
+  const handleOpenChange = (isOpen: boolean) => { setIsDialogOpen(isOpen); if (isOpen) { fetchAndSetTasks(); setIsFocusMode(false); } };
   
   const handleDropTask = async (subtaskId: string, parentTaskId: string, newStartTime: Date) => {
-    toast({ title: "Scheduling task...", description: `Moving task to ${format(newStartTime, 'HH:mm')}` });
+    toast({ title: "Scheduling task...", description: `Moving task to ${formatTimelineTime(newStartTime.toISOString())}` });
     await updateTaskSchedule({ subtaskId, parentTaskId, newStartTime: newStartTime.toISOString() });
     await fetchAndSetTasks();
     toast({ title: "Success!", description: "Task has been rescheduled." });
@@ -262,13 +263,24 @@ export function TimelineClock({ tasks: initialTasks }: { tasks: Task[] }) {
   const taskForFocus = useMemo(() => scheduledForDay.filter(t => !t.completed).sort((a,b) => parseISO(a.scheduledStartTime!).getTime() - parseISO(b.scheduledStartTime!).getTime())[0], [scheduledForDay]);
   
   return (
-    <Dialog open={isModalOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild><Button variant="ghost" size="icon" className="relative p-0" aria-label="Open Daily Timeline"><CalendarClock size={28} /></Button></DialogTrigger>
-      <DialogContent className="max-w-7xl w-full h-[95vh] flex flex-col p-0 gap-0">
+    <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+          <Button variant="ghost" size="sm" className="relative p-1" aria-label="Open Daily Timeline">
+              <CalendarClock size={22} />
+          </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-7xl w-[95%] h-[95vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogTitle className="sr-only">Daily Timeline View</DialogTitle>
+        <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none z-20">
+            <X className="h-5 w-5" />
+            <span className="sr-only">Close</span>
+        </DialogClose>
+
         <AnimatePresence>{isFocusMode && taskForFocus && <FocusModeView task={taskForFocus} onExit={() => setIsFocusMode(false)} />}</AnimatePresence>
-        <DialogHeader className="p-4 border-b flex-shrink-0">
+        
+        <header className="p-4 border-b flex-shrink-0 bg-background/95 backdrop-blur-sm z-10">
             <div className="flex justify-between items-center">
-                <DialogTitle className="flex items-center text-xl"><CalendarDays className="mr-2 h-6 w-6 text-primary" /> Daily Timeline</DialogTitle>
+                <h2 className="flex items-center text-xl font-semibold"><CalendarDays className="mr-2 h-6 w-6 text-primary" /> Daily Timeline</h2>
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" onClick={() => setCurrentDateForView(p => subDays(p, 1))}><ChevronLeft className="h-5 w-5" /></Button>
                     <Button variant="outline" size="sm" onClick={() => setCurrentDateForView(startOfDay(new Date()))} disabled={isSameDay(currentDateForView, startOfDay(new Date()))}>Today</Button>
@@ -277,31 +289,31 @@ export function TimelineClock({ tasks: initialTasks }: { tasks: Task[] }) {
                 </div>
             </div>
             <div className="flex items-center justify-between mt-2">
-                <DialogDescription className="text-xs">Viewing: {format(currentDateForView, "EEEE, MMMM d, yyyy")}</DialogDescription>
+                <p className="text-sm text-muted-foreground">Viewing: {format(currentDateForView, "EEEE, MMMM d, yyyy")}</p>
                 {conflictsCount > 0 && <Badge variant="destructive" className="flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" />{conflictsCount} Time Conflicts</Badge>}
             </div>
             <div className="mt-3 space-y-1"><div className="flex justify-between text-xs font-medium text-muted-foreground"><span>Daily Progress</span><span>{Math.round(dailyProgress)}%</span></div><Progress value={dailyProgress} className="h-2" /></div>
-        </DialogHeader>
-          
-        <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1 flex flex-col p-4 min-w-0">
+        </header>
+        
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto">
+            <div className="flex-1 flex flex-col p-2 md:p-4 min-w-0">
                 <VisualDayTimeline subtasks={scheduledForDay} currentDateForView={currentDateForView} onDropTask={handleDropTask} />
             </div>
-            <div className="w-80 md:w-96 border-l flex flex-col flex-shrink-0">
+            <aside className="w-full md:w-80 lg:w-96 border-t md:border-t-0 md:border-l flex flex-col flex-shrink-0 bg-muted/20">
                 <div className="p-4 border-b">
                     <h3 className="text-lg font-semibold">Task Lists</h3>
                     <p className="text-sm text-muted-foreground">Drag unscheduled tasks to the timeline.</p>
                 </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    <Card><CardHeader className="p-2"><CardTitle className="text-base flex items-center gap-2"><span>Upcoming</span><Badge variant="secondary">{scheduledForDay.length}</Badge></CardTitle></CardHeader><CardContent className="p-2 max-h-48 overflow-y-auto">{scheduledForDay.length > 0 ? scheduledForDay.sort((a,b) => parseISO(a.scheduledStartTime!).getTime() - parseISO(b.scheduledStartTime!).getTime()).map(subtask => <StaticSubTaskItem key={subtask.id} subtask={subtask} />) : <AlertDescription className="p-4 text-center text-sm">All clear!</AlertDescription>}</CardContent></Card>
-                    <Card><CardHeader className="p-2"><CardTitle className="text-base flex items-center gap-2"><span>Unscheduled</span><Badge variant="outline">{unscheduledActive.length}</Badge></CardTitle></CardHeader><CardContent className="p-2 max-h-48 overflow-y-auto">{unscheduledActive.length > 0 ? unscheduledActive.map(subtask => <DraggableSubTaskItem key={subtask.id} subtask={subtask} />) : <AlertDescription className="p-4 text-center text-sm">All tasks scheduled!</AlertDescription>}</CardContent></Card>
-                    <Card><CardHeader className="p-2"><CardTitle className="text-base flex items-center gap-2"><span>Completed</span><Badge className="bg-green-100 text-green-800">{completedForDay.length}</Badge></CardTitle></CardHeader><CardContent className="p-2 max-h-48 overflow-y-auto">{completedForDay.length > 0 ? completedForDay.map(subtask => <StaticSubTaskItem key={subtask.id} subtask={subtask} />) : <AlertDescription className="p-4 text-center text-sm">Nothing completed yet.</AlertDescription>}</CardContent></Card>
+                <div className="overflow-y-auto p-4 space-y-4">
+                    <Card><CardHeader className="p-2"><RenamedCardTitle className="text-base flex items-center gap-2"><span>Upcoming</span><Badge variant="secondary">{scheduledForDay.length}</Badge></RenamedCardTitle></CardHeader><CardContent className="p-2 max-h-48 overflow-y-auto">{scheduledForDay.length > 0 ? scheduledForDay.sort((a,b) => parseISO(a.scheduledStartTime!).getTime() - parseISO(b.scheduledStartTime!).getTime()).map(subtask => <StaticSubTaskItem key={subtask.id} subtask={subtask} />) : <AlertDescription className="p-4 text-center text-sm">All clear!</AlertDescription>}</CardContent></Card>
+                    <Card><CardHeader className="p-2"><RenamedCardTitle className="text-base flex items-center gap-2"><span>Unscheduled</span><Badge variant="outline">{unscheduledActive.length}</Badge></RenamedCardTitle></CardHeader><CardContent className="p-2 max-h-48 overflow-y-auto">{unscheduledActive.length > 0 ? unscheduledActive.map(subtask => <DraggableSubTaskItem key={subtask.id} subtask={subtask} />) : <AlertDescription className="p-4 text-center text-sm">All tasks scheduled!</AlertDescription>}</CardContent></Card>
+                    <Card><CardHeader className="p-2"><RenamedCardTitle className="text-base flex items-center gap-2"><span>Completed</span><Badge className="bg-green-100 text-green-800">{completedForDay.length}</Badge></RenamedCardTitle></CardHeader><CardContent className="p-2 max-h-48 overflow-y-auto">{completedForDay.length > 0 ? completedForDay.map(subtask => <StaticSubTaskItem key={subtask.id} subtask={subtask} />) : <AlertDescription className="p-4 text-center text-sm">Nothing completed yet.</AlertDescription>}</CardContent></Card>
                 </div>
-                <div className="p-4 border-t mt-auto space-y-2">
+                <div className="p-4 border-t mt-auto space-y-2 bg-muted/40">
                     <Button onClick={handleOptimizeDay} disabled={isOptimizing || unscheduledActive.length === 0} className="w-full"><BrainCircuit className="mr-2 h-4 w-4"/>{isOptimizing ? 'Optimizing...' : 'Optimize My Day'}</Button>
                     {taskForFocus && <Button onClick={() => setIsFocusMode(true)} variant="secondary" className="w-full"><Target className="mr-2 h-4 w-4"/>Enter Focus Mode</Button>}
                 </div>
-            </div>
+            </aside>
         </div>
       </DialogContent>
     </Dialog>

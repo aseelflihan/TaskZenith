@@ -1,3 +1,6 @@
+// D:\applications\tasks\TaskZenith\src\components\layout\AppShell.tsx
+// REVERTED to a simpler version. The logic to check for pathname is removed.
+// The component is now responsible for its original layout duties.
 
 "use client";
 
@@ -10,7 +13,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { SidebarNavContent } from "./SidebarNavContent";
-import { TimelineClock } from "./TimelineClock";
+import { TimelineClock } from "./TimelineClock"; // This will be the new Drawer component
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import type { Task } from "@/lib/types";
@@ -23,40 +26,34 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const [open, setOpen] = React.useState(true);
   const { data: session } = useSession();
+  
+  // This task-fetching logic is important for the whole app, so it stays here.
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
-
-  // وظيفة لتحديث المهام
+  
   const fetchTasks = React.useCallback(async () => {
     if (session?.user?.id) {
       try {
-        console.log("[AppShell] Fetching tasks...");
         const userTasks = await getTasksForUser(session.user.id);
         setTasks(userTasks);
-        setLastUpdate(Date.now());
-        console.log("[AppShell] Tasks updated:", userTasks.length);
       } catch (error) {
         console.error("[AppShell] Error fetching tasks:", error);
       }
     }
   }, [session?.user?.id]);
 
-  // التحديث المبدئي عند تحميل الصفحة
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
 
-  // إعداد التحديث التلقائي كل دقيقة
   useEffect(() => {
     const interval = setInterval(() => {
       fetchTasks();
-    }, 60000); // تحديث كل دقيقة
+    }, 60000); // Refresh every minute
 
     return () => clearInterval(interval);
   }, [fetchTasks]);
 
-  // جعل وظيفة التحديث متاحة عالمياً
-  React.useEffect(() => {
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).refreshTasks = fetchTasks;
     }
@@ -74,8 +71,10 @@ export function AppShell({ children }: AppShellProps) {
              <SidebarTrigger />
           </div>
           <div className="flex-1">
-            {/* Placeholder for breadcrumbs or page title */}
-          </div>          <div className="flex items-center gap-2">
+            {/* Placeholder */}
+          </div>
+          <div className="flex items-center gap-2">
+            {/* The TimelineClock now receives the tasks again */}
             <TimelineClock tasks={tasks} />
           </div>
         </header>
