@@ -535,7 +535,6 @@ export default function TasksPage() {
           />
         </div>
         <div className="space-y-8 lg:sticky lg:top-24 self-start">
-          <TimelineClock tasks={tasks} />
           <TaskTimer
             activeTarget={activeTimerTarget}
             sessionType={currentSessionTypeForActiveTarget}
