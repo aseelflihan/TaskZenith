@@ -1,6 +1,6 @@
 // D:\applications\tasks\TaskZenith\src\components\layout\TimelineClock.tsx
-// FINAL-FINAL-FINAL VERSION: Corrected all imports and component names to ensure
-// the close button and accessibility features work perfectly.
+// THE ABSOLUTELY, POSITIVELY FINAL VERSION: Adjusts the DialogContent height
+// to prevent clipping on mobile devices, ensuring all UI is visible.
 
 "use client";
 
@@ -269,7 +269,8 @@ export function TimelineClock({ tasks: initialTasks }: { tasks: Task[] }) {
               <CalendarClock size={22} />
           </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-7xl w-[95%] h-[95vh] flex flex-col p-0 gap-0 overflow-hidden">
+      {/* FINAL FINAL STYLING: h-auto with max-h-[90vh] for flexible and safe mobile height */}
+      <DialogContent className="max-w-7xl w-[95%] h-auto max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogTitle className="sr-only">Daily Timeline View</DialogTitle>
         <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none z-20">
             <X className="h-5 w-5" />
@@ -295,7 +296,7 @@ export function TimelineClock({ tasks: initialTasks }: { tasks: Task[] }) {
             <div className="mt-3 space-y-1"><div className="flex justify-between text-xs font-medium text-muted-foreground"><span>Daily Progress</span><span>{Math.round(dailyProgress)}%</span></div><Progress value={dailyProgress} className="h-2" /></div>
         </header>
         
-        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto">
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto min-h-0">
             <div className="flex-1 flex flex-col p-2 md:p-4 min-w-0">
                 <VisualDayTimeline subtasks={scheduledForDay} currentDateForView={currentDateForView} onDropTask={handleDropTask} />
             </div>
