@@ -185,7 +185,7 @@ export async function generateTasksFromNaturalLanguage(userInput: string, existi
   }
 }
 
-// ... (All other functions like signUpUser, getTasksForUser, addTask, etc. remain unchanged) ...
+// ... (All other functions like signUpUser, getTasksForUser, etc. remain unchanged) ...
 
 interface SignUpUserInput {
   name: string;
@@ -309,8 +309,9 @@ export async function deleteTask(userId: string, taskId: string): Promise<{ succ
   }
 }
 
+
 // ==================================================================
-// *** NEW SERVER ACTIONS FOR ADVANCED TIMELINE FEATURES ***
+// *** NEW/MODIFIED SERVER ACTIONS FOR ADVANCED TIMELINE FEATURES ***
 // ==================================================================
 
 /**
@@ -361,11 +362,64 @@ export async function updateTaskSchedule(data: { subtaskId: string, parentTaskId
 }
 
 /**
+ * Deletes a single subtask from a parent task's subtasks array.
+ */
+export async function deleteSubtask(data: { parentTaskId: string, subtaskId: string }): Promise<{ success?: boolean; error?: string }> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return { error: "User not authenticated." };
+  }
+  const userId = session.user.id;
+  const { parentTaskId, subtaskId } = data;
+
+  try {
+    const taskRef = adminDb.collection("tasks").doc(parentTaskId);
+    const taskDoc = await taskRef.get();
+
+    if (!taskDoc.exists || taskDoc.data()?.userId !== userId) {
+      return { error: "Unauthorized or parent task not found." };
+    }
+
+    const parentTask = taskDoc.data() as Task;
+
+    // Filter out the subtask to be deleted
+    const updatedSubtasks = parentTask.subtasks.filter(st => st.id !== subtaskId);
+
+    // If all subtasks are deleted, you might want to delete the parent task too.
+    // This is optional and depends on your application's logic.
+    // For now, we'll just update the subtasks array.
+    if (updatedSubtasks.length === 0 && parentTask.subtasks.length > 0) {
+        // Optional: you could delete the parent task if it becomes empty
+        // await taskRef.delete();
+        // Or just update it with an empty array
+        await taskRef.update({
+            subtasks: [],
+            updatedAt: new Date().toISOString(),
+        });
+    } else {
+        // Update the parent task with the new subtasks array
+        await taskRef.update({
+            subtasks: updatedSubtasks,
+            updatedAt: new Date().toISOString(),
+        });
+    }
+
+    revalidatePath('/'); // Revalidate to update the UI
+    return { success: true };
+
+  } catch (error) {
+    console.error("[deleteSubtask] Error:", error);
+    return { error: "Failed to delete subtask." };
+  }
+}
+
+
+/**
  * Placeholder for an AI-powered day optimization logic.
  * This function is called when the "Optimize My Day" button is clicked.
  * Currently, it just logs the request. You can expand this with real AI logic.
  */
-export async function optimizeDaySchedule(data: { tasks: Task[], date: string }): Promise<{ success?: boolean; error?: string }> {
+export async function optimizeDaySchedule(data: { tasks: Task[], date: string }): Promise<{ success?: boolean; error?:string }> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return { error: "User not authenticated." };
