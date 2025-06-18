@@ -2,15 +2,12 @@
 
 "use server";
 
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { adminAuth, adminDb } from '@/lib/firebase-admin';
-import type { UserRecord } from 'firebase-admin/auth';
 import type { Task } from "./types";
 import type { TaskFormData } from "@/components/tasks/TaskForm";
+import { adminDb } from '@/lib/firebase-admin';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-// CHANGED: Imported setHours and setMinutes for more reliable time setting
 import { addMinutes, format, parse, parseISO, isValid, setHours, setMinutes, startOfDay } from 'date-fns';
 
 const getFlows = async () => {
@@ -20,7 +17,7 @@ const getFlows = async () => {
     return { prioritizeTasksFlow, generateProductivityReportsFlow, parseNaturalLanguageTasks };
 };
 
-// ... (getPrioritizedTasks and getProductivityReport functions remain unchanged) ...
+// ... Other functions like getPrioritizedTasks, getProductivityReport remain unchanged ...
 export async function getPrioritizedTasks(tasks: Task[], context: string): Promise<{ prioritizedTasks?: string[]; reasoning?: string; error?: string }> {
   try {
     const { prioritizeTasksFlow } = await getFlows();
@@ -90,26 +87,9 @@ export async function generateTasksFromNaturalLanguage(userInput: string, existi
   try {
     const { parseNaturalLanguageTasks } = await getFlows();
     
-    // 1. Calculate the next available time slot based on existing tasks
-    let nextAvailableTime = new Date(); // Default to now
-    existingTasks.forEach(task => {
-      task.subtasks.forEach(st => {
-        let subtaskEndTime: Date | null = null;
-        if (st.scheduledStartTime) {
-            const scheduledStart = parseISO(st.scheduledStartTime);
-            if (isValid(scheduledStart)) {
-                // End time is start time + duration + break
-                const totalDuration = (st.durationMinutes ?? 25) + (st.breakMinutes ?? 10);
-                subtaskEndTime = addMinutes(scheduledStart, totalDuration);
-            }
-        }
-        if (subtaskEndTime && subtaskEndTime > nextAvailableTime) {
-            nextAvailableTime = subtaskEndTime;
-        }
-      });
-    });
+    // *** CHANGE: The block of code that scans existingTasks to find the "next available time" has been removed. ***
+    // We will now always start scheduling from the current time unless specified by the user.
 
-    // 2. Call the AI to parse the user's input
     const currentDate = format(new Date(), 'yyyy-MM-dd');
     const aiResult = await parseNaturalLanguageTasks({ userInput, currentDate });
 
@@ -118,36 +98,35 @@ export async function generateTasksFromNaturalLanguage(userInput: string, existi
     }
 
     const allTasksData: TaskFormData[] = [];
-    
-    // This variable will track the start time for the *next group* of tasks.
-    // It starts as the next available slot, but will be updated by each group.
-    let cursorTime = nextAvailableTime;
+    // *** CHANGE: The schedule cursor now always starts from the current time. ***
+    let scheduleCursor = new Date();
 
-    // 3. Process each task group returned by the AI
     for (const taskGroup of aiResult) {
-      let groupStartTime: Date;
+      let groupStartTime: Date | null = null;
 
-      // 3a. Determine the starting point for this specific group
       if (taskGroup.deadline && taskGroup.startTime) {
-        // USER-SPECIFIED TIME: The AI found a specific date and time. Use it.
         const [hour, minute] = taskGroup.startTime.split(':').map(Number);
-        const dateFromAI = parse(taskGroup.deadline, 'yyyy-MM-dd', new Date());
-        groupStartTime = setMinutes(setHours(startOfDay(dateFromAI), hour), minute);
-      } else {
-        // AUTO-SCHEDULE: No time specified by user, so use the next available slot.
-        groupStartTime = cursorTime;
+        const parsedDate = parse(taskGroup.deadline, 'yyyy-MM-dd', new Date());
+
+        if (isValid(parsedDate) && !isNaN(hour) && !isNaN(minute)) {
+            groupStartTime = setMinutes(setHours(startOfDay(parsedDate), hour), minute);
+        }
+      }
+
+      // If no valid time was found from AI, fall back to the schedule cursor.
+      // On the first loop, this will be the current time (new Date()).
+      if (!groupStartTime || !isValid(groupStartTime)) {
+        groupStartTime = scheduleCursor;
       }
       
-      let subtaskCursorTime = groupStartTime; // The running time for subtasks within this group
+      let subtaskTimeTracker = groupStartTime;
 
       const scheduledSubtasks = taskGroup.subtasks.map(st => {
         const duration = st.durationMinutes ?? 25;
         const breakTime = st.breakMinutes ?? 10;
         
-        const currentSubtaskStartTime = subtaskCursorTime;
-
-        // The next subtask will start after this one ends (including its break)
-        subtaskCursorTime = addMinutes(currentSubtaskStartTime, duration + breakTime);
+        const currentSubtaskStartTime = subtaskTimeTracker;
+        subtaskTimeTracker = addMinutes(currentSubtaskStartTime, duration + breakTime);
 
         return {
           id: crypto.randomUUID(),
@@ -155,7 +134,6 @@ export async function generateTasksFromNaturalLanguage(userInput: string, existi
           completed: false,
           durationMinutes: duration,
           breakMinutes: breakTime,
-          // Use the calculated values for this specific subtask
           deadline: format(currentSubtaskStartTime, 'yyyy-MM-dd'),
           scheduledTime: format(currentSubtaskStartTime, 'HH:mm'),
         };
@@ -169,10 +147,10 @@ export async function generateTasksFromNaturalLanguage(userInput: string, existi
 
       allTasksData.push(taskData);
 
-      // 3b. Update the main cursor for the next task group
-      // The next group will start after all subtasks of the current group are finished.
-      if (subtaskCursorTime > cursorTime) {
-        cursorTime = subtaskCursorTime;
+      // Update the main schedule cursor so the *next task group from the same AI call*
+      // starts after the current one finishes.
+      if (subtaskTimeTracker > scheduleCursor) {
+        scheduleCursor = subtaskTimeTracker;
       }
     }
 
@@ -185,7 +163,8 @@ export async function generateTasksFromNaturalLanguage(userInput: string, existi
   }
 }
 
-// ... (All other functions like signUpUser, getTasksForUser, etc. remain unchanged) ...
+
+// --- The following functions are unchanged ---
 
 interface SignUpUserInput {
   name: string;
@@ -219,7 +198,7 @@ function convertTimestamps(obj: any): any {
 export async function getTasksForUser(userId: string): Promise<Task[]> {
   try {
     const tasksRef = adminDb.collection("tasks");
-    const snapshot = await tasksRef.where("userId", "==", userId).orderBy("createdAt", "desc").get(); // Added orderBy
+    const snapshot = await tasksRef.where("userId", "==", userId).orderBy("createdAt", "desc").get();
     const tasks = snapshot.docs.map(doc => {
       const data = doc.data();
       return convertTimestamps({ id: doc.id, ...data }) as Task;
@@ -269,7 +248,7 @@ export async function addTask(userId: string, taskData: TaskFormData): Promise<{
     };
 
     const docRef = await tasksRef.add(newTask);
-    revalidatePath('/'); // Revalidate the root layout
+    revalidatePath('/');
     return { taskId: docRef.id };
   } catch (error) {
     console.error("[addTask] Error adding task:", error);
@@ -309,14 +288,6 @@ export async function deleteTask(userId: string, taskId: string): Promise<{ succ
   }
 }
 
-
-// ==================================================================
-// *** NEW/MODIFIED SERVER ACTIONS FOR ADVANCED TIMELINE FEATURES ***
-// ==================================================================
-
-/**
- * Updates the schedule for a single subtask. Used for Drag & Drop.
- */
 export async function updateTaskSchedule(data: { subtaskId: string, parentTaskId: string, newStartTime: string }): Promise<{ success?: boolean; error?: string }> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -361,9 +332,6 @@ export async function updateTaskSchedule(data: { subtaskId: string, parentTaskId
   }
 }
 
-/**
- * Deletes a single subtask from a parent task's subtasks array.
- */
 export async function deleteSubtask(data: { parentTaskId: string, subtaskId: string }): Promise<{ success?: boolean; error?: string }> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -381,30 +349,21 @@ export async function deleteSubtask(data: { parentTaskId: string, subtaskId: str
     }
 
     const parentTask = taskDoc.data() as Task;
-
-    // Filter out the subtask to be deleted
     const updatedSubtasks = parentTask.subtasks.filter(st => st.id !== subtaskId);
 
-    // If all subtasks are deleted, you might want to delete the parent task too.
-    // This is optional and depends on your application's logic.
-    // For now, we'll just update the subtasks array.
     if (updatedSubtasks.length === 0 && parentTask.subtasks.length > 0) {
-        // Optional: you could delete the parent task if it becomes empty
-        // await taskRef.delete();
-        // Or just update it with an empty array
         await taskRef.update({
             subtasks: [],
             updatedAt: new Date().toISOString(),
         });
     } else {
-        // Update the parent task with the new subtasks array
         await taskRef.update({
             subtasks: updatedSubtasks,
             updatedAt: new Date().toISOString(),
         });
     }
 
-    revalidatePath('/'); // Revalidate to update the UI
+    revalidatePath('/');
     return { success: true };
 
   } catch (error) {
@@ -413,24 +372,11 @@ export async function deleteSubtask(data: { parentTaskId: string, subtaskId: str
   }
 }
 
-
-/**
- * Placeholder for an AI-powered day optimization logic.
- * This function is called when the "Optimize My Day" button is clicked.
- * Currently, it just logs the request. You can expand this with real AI logic.
- */
 export async function optimizeDaySchedule(data: { tasks: Task[], date: string }): Promise<{ success?: boolean; error?:string }> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return { error: "User not authenticated." };
   }
-  
-  // In a real application, you would:
-  // 1. Get all unscheduled tasks for the user.
-  // 2. Get all scheduled tasks for the given date to identify free time slots.
-  // 3. Call an AI model (like the ones from `getFlows`) with the list of unscheduled tasks and free slots.
-  // 4. The AI would return an optimized schedule.
-  // 5. You would then update all the affected tasks in Firebase.
   
   console.log("===================================");
   console.log("🚀 AI Day Optimization Triggered 🚀");
@@ -439,10 +385,8 @@ export async function optimizeDaySchedule(data: { tasks: Task[], date: string })
   console.log("This is a placeholder. No tasks were actually changed.");
   console.log("===================================");
 
-  // We are not changing data, but we revalidate to show a "refresh" effect.
   revalidatePath('/');
 
-  // Simulate a delay to make it feel like AI is "thinking"
   await new Promise(resolve => setTimeout(resolve, 1500));
   
   return { success: true };

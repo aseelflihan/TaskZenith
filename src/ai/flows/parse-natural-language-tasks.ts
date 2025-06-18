@@ -1,9 +1,11 @@
 // D:\applications\tasks\TaskZenith\src\ai\flows\parse-natural-language-tasks.ts
 'use server';
-import { ai, geminiPro } from '@/ai/genkit'; // CHANGED: Import geminiPro explicitly
+// Using the correct, verified package name.
+import { ai } from '@/ai/genkit';
+import { geminiPro } from '@genkit-ai/googleai';
 import { z } from 'genkit';
 
-// Schemas remain the same, they are well-defined.
+// Schemas remain the same.
 const SubTaskParsedSchema = z.object({
   text: z.string().describe('The description of the subtask.'),
   durationMinutes: z.number().optional().describe('The estimated duration in minutes. Suggest 25 if not specified.'),
@@ -15,8 +17,8 @@ const SubTaskParsedSchema = z.object({
 const MainTaskParsedSchema = z.object({
   text: z.string().describe('The main title for this specific group of tasks. This title should be rephrased to be clear and motivating.'),
   priority: z.enum(['low', 'medium', 'high']).default('medium').optional(),
-  deadline: z.string().optional().describe("The primary due date for the entire task group in 'yyyy-MM-dd' format."),
-  startTime: z.string().optional().describe("The primary start time for the entire task group in 'HH:mm' (24-hour) format."),
+  deadline: z.string().optional().describe("The primary due date for the entire task group in 'yyyy-MM-dd' format. Set to null if not specified by the user."),
+  startTime: z.string().optional().describe("The primary start time for the entire task group in 'HH:mm' (24-hour) format. Set to null if not specified by the user."),
   subtasks: z.array(SubTaskParsedSchema).default([]),
 });
 export type MainTaskParsed = z.infer<typeof MainTaskParsedSchema>;
@@ -37,45 +39,37 @@ export async function parseNaturalLanguageTasks(input: ParseNaturalLanguageInput
 }
 
 // ==================================================================
-// *** CRITICAL CHANGE: NEW, MORE ROBUST PROMPT ***
+// *** UPGRADED PROMPT: From Parser to Intelligent Assistant ***
 // ==================================================================
 const prompt = ai.definePrompt({
   name: 'parseNaturalLanguageTasksPrompt',
   input: { schema: ParseNaturalLanguageInputSchema },
   output: { schema: MultiTaskOutputSchema },
-  // CHANGED: The entire prompt is rewritten to force a step-by-step thinking process.
-  prompt: `You are a hyper-intelligent task parser. Your job is to meticulously analyze user input and convert it into a structured JSON object. You MUST follow these steps in order.
+  prompt: `You are an intelligent task assistant. Your job is to convert user requests into structured tasks. You must be precise with explicit instructions and creative with general goals.
+The current date is {{currentDate}}. The user input is: "{{userInput}}".
 
-Current date is {{currentDate}}.
+**Analysis Steps:**
 
-**Step 1: Overall Analysis**
-- Read the entire user input: "{{userInput}}"
-- Identify the main goal.
-- Identify the language of the input (e.g., Arabic, English). All your output text MUST be in this language.
+1.  **Main Title & Language:** Determine the main goal from the input. Create a clear, motivating title in the same language as the input.
 
-**Step 2: Date and Time Extraction**
-- Scan the input for any specific date or time.
-- Examples: "19 يونيو" -> "2024-06-19" (use current year), "tomorrow", "next Friday".
-- Examples: "الساعة وحدة ظهرا", "1pm" -> "13:00". "9 مساء" -> "21:00".
-- If found, these will be the 'deadline' and 'startTime' for the main task. If not found, these fields will be null.
+2.  **Date/Time Extraction:** Scan for any specific dates or times. If found, use them for the main task's 'deadline' and 'startTime'. If not, leave these fields as \`null\`.
 
-**Step 3: Title Generation**
-- Based on the main goal, create a concise, clear, and motivating title for the main task's 'text' field. Do not just copy the user's text.
+3.  **Subtask Generation Logic (CRITICAL - Follow this order):**
 
-**Step 4: Subtask Deconstruction (THE MOST IMPORTANT STEP)**
-- Look for keywords indicating multiple sub-items, especially ranges like "من ... حتى ...", "from ... to ...", "chapters X, Y, and Z".
-- **RULE: YOU MUST NEVER output a range as a single subtask.** You MUST deconstruct it.
-- **Example of what NOT to do:** If input is "review chapters 1 to 3", DO NOT create a subtask named "review chapters 1 to 3".
-- **Example of what YOU MUST DO:** If input is "مراجعة الوحدة الاولى حتى الوحدة الثالثة", you MUST generate THREE separate subtasks in the 'subtasks' array:
-  1. {"text": "مراجعة الوحدة الأولى"}
-  2. {"text": "مراجعة الوحدة الثانية"}
-  3. {"text": "مراجعة الوحدة الثالثة"}
-- If no specific subtasks or ranges are mentioned, create a single, general subtask based on the main title.
+    *   **Step 3a: Check for Explicit Subtasks.**
+        *   First, look for explicit instructions like ranges ("من الوحدة 1 إلى 3", "chapters 1-3"), lists, or multiple distinct actions.
+        *   If you find explicit subtasks, parse them literally and accurately.
+        *   **Example (Explicit):** Input "مراجعة الوحدة الاولى حتى الوحدة الثالثة" -> Subtasks: ["مراجعة الوحدة الأولى", "مراجعة الوحدة الثانية", "مراجعة الوحدة الثالثة"].
 
-**Step 5: Final JSON Assembly**
-- Assemble all the extracted and generated data into the final JSON structure according to the provided schema. Ensure all fields are correctly formatted.
+    *   **Step 3b: Check for General Goals (if no explicit subtasks are found).**
+        *   IF, AND ONLY IF, the input is a general goal (e.g., "Learn English", "plan a new project", "write a blog post"), act as an expert project planner.
+        *   You **MUST** brainstorm and generate a list of 3-5 logical and actionable starting subtasks to help the user begin.
+        *   **Example (General Goal):** Input "add tasks for learning English" -> Subtasks: ["Define learning goals (e.g., conversational, business)", "Master the 100 most common words", "Practice daily with a language app", "Study basic grammar rules"].
 
-Now, execute these steps meticulously for the user's input.
+    *   **Step 3c: Fallback for Simple Tasks.**
+        *   If the input is a simple, single-action task that is not a general goal (e.g., "Call mom", "Buy milk"), create just one subtask with the same text as the main title.
+
+4.  **Final Assembly:** Combine all the information into the final JSON object.
 `,
 });
 
@@ -86,16 +80,17 @@ const parseNaturalLanguageTasksFlow = ai.defineFlow(
     outputSchema: MultiTaskOutputSchema,
   },
   async (input) => {
-    // CHANGED: We now explicitly call the prompt with a more powerful model and lower temperature for more deterministic results.
     const { output } = await prompt(input, {
-      model: geminiPro, // Use a more capable model
+      model: geminiPro,
       config: {
-        temperature: 0.2, // Lower temperature for less "creativity" and more adherence to instructions
+        // *** MODIFICATION: Increased temperature slightly to allow for more creativity in brainstorming subtasks. ***
+        temperature: 0.4,
       },
     });
 
     if (!output || !output.tasks) {
-      throw new Error("AI failed to parse the task input.");
+      console.error("AI parsing failed. Raw output:", output);
+      throw new Error("AI failed to parse the task input into a valid structure.");
     }
 
     return output;
