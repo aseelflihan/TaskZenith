@@ -153,3 +153,13 @@ This makes the scrollbar look sleek and modern, similar to mobile.
     }
   }
 }
+
+
+/* D:\applications\tasks\TaskZenith\src\app\globals.css */
+/* -- ADD AT THE END OF THE FILE -- */
+
+@keyframes scroll {
+	to {
+		transform: translate(calc(-50% - 0.75rem)); /* 0.75rem is half of the gap */
+	}
+}
