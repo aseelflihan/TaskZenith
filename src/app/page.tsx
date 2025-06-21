@@ -1,24 +1,23 @@
-// D:\applications\tasks\TaskZenith\src\app\page.tsx
-// -- INTEGRATING SMOOTH SCROLL --
+// src/app/page.tsx - (Updated)
 
+import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
-import { Header } from "@/components/landing/Header";
-import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
-import SmoothScroll from "@/components/landing/SmoothScroll"; // استيراد المكون الجديد
+import { ProductivityFlow } from "@/components/landing/ProductivityFlow"; // Import the new component
+import { CtaSection } from "@/components/landing/CtaSection";
+import { Footer } from "@/components/landing/Footer";
 
-export default function LandingPageV2() {
+export default function LandingPage() {
   return (
-    <SmoothScroll> {/* تغليف كل شيء هنا */}
-      <div className="bg-black text-white overflow-x-hidden"> {/* إضافة overflow-x-hidden */}
-        <Header />
-        <main>
-          <HeroSection />
-          <FeaturesSection />
-          <TestimonialsSection />
-          {/* We will add more sections here later */}
-        </main>
-      </div>
-    </SmoothScroll>
+    <>
+      <Header />
+      <main>
+        <HeroSection />
+        <FeaturesSection />
+        <ProductivityFlow /> {/* Add the new component here */}
+        <CtaSection />
+      </main>
+      <Footer />
+    </>
   );
 }

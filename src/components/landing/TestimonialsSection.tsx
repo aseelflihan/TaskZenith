@@ -1,179 +1,124 @@
-// D:\applications\tasks\TaskZenith\src\components\landing\TestimonialsSection.tsx
-// -- NEW COMPONENT: INFINITE MOVING CARDS --
+// D:\applications\tasks\TaskZenith\src/components\landing\TestimonialsSection.tsx
 
 "use client";
 
+import React from "react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import React, { useEffect, useState } from "react";
+import Image from 'next/image';
 
-export function TestimonialsSection() {
-  const testimonials = [
+const testimonials = [
+  {
+    quote: "TaskZenith has fundamentally changed how I approach my day. The AI task generation is a game-changer. I'm getting more done with less stress.",
+    name: "Sarah L.",
+    title: "Freelance Designer",
+    image: "/avatars/sarah.jpg",
+  },
+  {
+    quote: "The collaboration features are incredibly intuitive. Our team's productivity has skyrocketed since we switched. It's the central hub for all our projects now.",
+    name: "Michael B.",
+    title: "Project Manager, TechCorp",
+    image: "/avatars/michael.jpg",
+  },
+  {
+    quote: "I was skeptical about another task app, but the focus timer and progress reports keep me motivated. It's like having a personal productivity coach.",
+    name: "Jessica Y.",
+    title: "Software Engineer",
+    image: "/avatars/jessica.jpg",
+  },
+  {
+    quote: "Finally, an app that's both powerful and beautiful. The interface is so clean and a joy to use every single day.",
+    name: "David C.",
+    title: "Startup Founder",
+    image: "/avatars/david.jpg",
+  },
     {
-      quote:
-        "TaskZenith transformed my workflow. The AI prioritization is a game-changer and saves me hours every week.",
-      name: "Sarah L.",
-      title: "Project Manager",
-    },
-    {
-      quote:
-        "I've tried every to-do app out there. Nothing comes close to the simplicity and power of TaskZenith. The natural language input is pure magic.",
-      name: "Michael B.",
-      title: "Freelance Developer",
-    },
-    {
-      quote: "The productivity reports are incredibly insightful. I finally understand where my time goes and how to optimize it. Highly recommended!",
-      name: "Jessica D.",
-      title: "UX Designer",
-    },
-    {
-      quote:
-        "As a student, juggling assignments was a nightmare. TaskZenith's timeline view brought order to my chaos. I can't live without it.",
-      name: "Chris P.",
-      title: "University Student",
-    },
-    {
-        quote:
-          "The most intuitive and beautifully designed productivity tool I have ever used. It's a joy to use every single day.",
-        name: "Emily R.",
-        title: "Startup Founder",
-    },
-  ];
+    quote: "The ability to just dump my thoughts and have the AI organize them into a coherent plan is nothing short of magic. Highly recommended.",
+    name: "Emily R.",
+    title: "Content Creator",
+    image: "/avatars/emily.jpg",
+  },
+];
 
+const TestimonialCard = ({
+  quote,
+  name,
+  title,
+  image,
+}: (typeof testimonials)[0]) => {
   return (
-    <div className="py-20 md:py-32 bg-black text-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4">
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-12">
-          Loved by Professionals Worldwide
-        </h2>
-        <div className="relative flex flex-col items-center justify-center">
-          <InfiniteMovingCards
-            items={testimonials}
-            direction="right"
-            speed="slow"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const InfiniteMovingCards = ({
-  items,
-  direction = "left",
-  speed = "fast",
-  pauseOnHover = true,
-  className,
-}: {
-  items: {
-    quote: string;
-    name: string;
-    title: string;
-  }[];
-  direction?: "left" | "right";
-  speed?: "fast" | "normal" | "slow";
-  pauseOnHover?: boolean;
-  className?: string;
-}) => {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const scrollerRef = React.useRef<HTMLUListElement>(null);
-
-  useEffect(() => {
-    addAnimation();
-  }, []);
-  
-  const [start, setStart] = useState(false);
-  
-  function addAnimation() {
-    if (containerRef.current && scrollerRef.current) {
-      const scrollerContent = Array.from(scrollerRef.current.children);
-      scrollerContent.forEach((item) => {
-        const duplicatedItem = item.cloneNode(true);
-        if (scrollerRef.current) {
-          scrollerRef.current.appendChild(duplicatedItem);
-        }
-      });
-
-      getDirection();
-      getSpeed();
-      setStart(true);
-    }
-  }
-
-  const getDirection = () => {
-    if (containerRef.current) {
-      if (direction === "left") {
-        containerRef.current.style.setProperty(
-          "--animation-direction",
-          "forwards"
-        );
-      } else {
-        containerRef.current.style.setProperty(
-          "--animation-direction",
-          "reverse"
-        );
-      }
-    }
-  };
-
-  const getSpeed = () => {
-    if (containerRef.current) {
-      if (speed === "fast") {
-        containerRef.current.style.setProperty("--animation-duration", "20s");
-      } else if (speed === "normal") {
-        containerRef.current.style.setProperty("--animation-duration", "40s");
-      } else {
-        containerRef.current.style.setProperty("--animation-duration", "80s");
-      }
-    }
-  };
-
-  return (
-    <div
-      ref={containerRef}
+    <figure
       className={cn(
-        "scroller relative z-20 max-w-7xl overflow-hidden [mask-image:linear-gradient(to_right,transparent,white_20%,white_80%,transparent)]",
-        className
+        "relative w-80 cursor-pointer overflow-hidden rounded-2xl border p-6",
+        "border-border/70 bg-card/50 dark:bg-card/60"
       )}
     >
-      <ul
-        ref={scrollerRef}
-        className={cn(
-          "flex min-w-full shrink-0 gap-6 py-4 w-max flex-nowrap",
-          start && "animate-scroll",
-          pauseOnHover && "hover:[animation-play-state:paused]"
-        )}
-      >
-        {items.map((item, idx) => (
-          <li
-            className="w-[350px] max-w-full relative rounded-2xl border border-white/10 flex-shrink-0 px-8 py-6 md:w-[450px]"
-            style={{
-              background:
-                "linear-gradient(180deg, var(--neutral-800), var(--neutral-900)",
-            }}
-            key={item.name}
-          >
-            <blockquote>
-              <div
-                aria-hidden="true"
-                className="user-select-none -z-1 pointer-events-none absolute -left-0.5 -top-0.5 h-[calc(100%_+_4px)] w-[calc(100%_+_4px)]"
-              ></div>
-              <span className=" relative z-20 text-sm leading-[1.6] text-neutral-100 font-normal">
-                {item.quote}
-              </span>
-              <div className="relative z-20 mt-6 flex flex-row items-center">
-                <span className="flex flex-col gap-1">
-                  <span className=" text-sm leading-[1.6] text-white font-bold">
-                    {item.name}
-                  </span>
-                  <span className=" text-sm leading-[1.6] text-neutral-400 font-normal">
-                    {item.title}
-                  </span>
-                </span>
-              </div>
-            </blockquote>
-          </li>
-        ))}
-      </ul>
-    </div>
+      <div className="flex flex-row items-center gap-4">
+        <Image 
+            className="rounded-full" 
+            width={48} 
+            height={48} 
+            alt={name} 
+            src={image}
+            // You can generate placeholder images from a service like unavatar.io
+            // For example: src={`https://unavatar.io/twitter/${name.replace(/\s/g, '')}`}
+        />
+        <div className="flex flex-col">
+          <figcaption className="text-sm font-medium text-foreground">
+            {name}
+          </figcaption>
+          <p className="text-xs font-medium text-foreground/70">{title}</p>
+        </div>
+      </div>
+      <blockquote className="mt-4 text-sm text-foreground/90">
+        "{quote}"
+      </blockquote>
+    </figure>
   );
 };
+
+export function TestimonialsSection() {
+  // We duplicate the testimonials to create a seamless looping effect
+  const duplicatedTestimonials = [...testimonials, ...testimonials];
+
+  return (
+    <section id="testimonials" className="py-20 sm:py-32 bg-background/80">
+      <div className="container mx-auto px-4">
+        <motion.div
+          className="max-w-3xl mx-auto text-center"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ duration: 0.6 }}
+        >
+          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+            Loved by Professionals Worldwide
+          </h2>
+          <p className="mt-4 text-lg text-foreground/70">
+            Don't just take our word for it. Here's what our users are saying about TaskZenith.
+          </p>
+        </motion.div>
+
+        <div className="relative mt-16 overflow-hidden">
+          <motion.div
+            className="flex gap-6"
+            animate={{
+              x: ["-0%", "-100%"],
+              transition: {
+                ease: "linear",
+                duration: 40,
+                repeat: Infinity,
+              },
+            }}
+          >
+            {duplicatedTestimonials.map((testimonial, index) => (
+              <TestimonialCard key={index} {...testimonial} />
+            ))}
+          </motion.div>
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-1/6 bg-gradient-to-r from-background/80 to-transparent"></div>
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-1/6 bg-gradient-to-l from-background/80 to-transparent"></div>
+        </div>
+      </div>
+    </section>
+  );
+}

@@ -1,3 +1,5 @@
+// D:\applications\tasks\TaskZenith\src\components\layout\SidebarNavContent.tsx
+// -- CORRECTED HREF FOR TASKS --
 
 "use client";
 
@@ -13,8 +15,8 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { cn } from "@/lib/utils.tsx";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { cn } from "@/lib/utils"; // Removed .tsx extension, it should be .ts
 import { useSession, signIn, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -29,10 +31,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 
+// --- THIS IS THE FIX ---
 const menuItems = [
-  { href: "/", label: "Tasks", icon: ListChecks, requiresAuth: true },
+  { href: "/dashboard", label: "Tasks", icon: ListChecks, requiresAuth: true },
   { href: "/reports", label: "Productivity Reports", icon: BarChart3, requiresAuth: true },
 ];
+// ----------------------
 
 export function SidebarNavContent() {
   const pathname = usePathname();
@@ -75,10 +79,6 @@ export function SidebarNavContent() {
           <DropdownMenuContent side="right" align="start" className="w-56 bg-popover text-popover-foreground">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </DropdownMenuItem> */}
             <DropdownMenuItem onClick={() => signOut({ callbackUrl: '/auth/signin' })}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Sign Out</span>
@@ -95,7 +95,6 @@ export function SidebarNavContent() {
     );
   };
 
-
   return (
     <>
       <SidebarHeader className="p-4">
@@ -110,7 +109,7 @@ export function SidebarNavContent() {
         <SidebarMenu>
           {menuItems.map((item) => {
             if (item.requiresAuth && !session && !isLoading) {
-              return null; // Don't render auth-required items if not logged in and not loading
+              return null;
             }
             if (item.requiresAuth && isLoading) {
               return (
@@ -157,7 +156,16 @@ export function SidebarNavContent() {
         <div className="p-2">
             <UserAvatar />
         </div>
-        <ThemeToggle />
+        
+        {/* --- THIS IS THE NEW, IMPROVED FOOTER SECTION --- */}
+        <div className="flex items-center justify-between p-2 rounded-lg hover:bg-sidebar-accent transition-colors">
+            <Link href="/" className="flex items-center gap-2" aria-label="Go to Homepage">
+                <Zap className="h-6 w-6 text-primary" />
+                <span className="text-sm font-semibold text-sidebar-foreground">Home</span>
+            </Link>
+            <ThemeToggle />
+        </div>
+        {/* ----------------------------------------------- */}
       </SidebarFooter>
     </>
   );

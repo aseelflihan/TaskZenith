@@ -1,8 +1,9 @@
-import * as React from 'react';
-import { clsx, type ClassValue } from "clsx";
+// D:\applications\tasks\TaskZenith\src\lib\utils.ts
+
+import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { parseISO, format as formatDateFn } from 'date-fns';
-import nodemailer from "nodemailer";
+import * as React from 'react';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -12,7 +13,7 @@ export const formatTimelineTime = (isoString?: string): string | null => {
   if (!isoString) return null;
   try {
     const date = parseISO(isoString);
-    return formatDateFn(date, "h:mm a"); // e.g., 5:30 PM
+    return formatDateFn(date, "h:mm a");
   } catch (e) {
     console.error("Error formatting date for timeline:", e, "Input:", isoString);
     return "Invalid Date";
@@ -34,25 +35,3 @@ export const getTimelineDayNightIcon = (
     return null;
   }
 };
-
-export async function sendVerificationEmail(email: string) {
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-
-  const mailOptions = {
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: email,
-    subject: "تأكيد البريد الإلكتروني",
-    text: "يرجى الضغط على الرابط لتأكيد بريدك الإلكتروني.",
-    html: `<p>يرجى الضغط على الرابط لتأكيد بريدك الإلكتروني.</p>`
-  };
-
-  await transporter.sendMail(mailOptions);
-}

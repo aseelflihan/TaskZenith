@@ -1,107 +1,95 @@
-// D:\applications\tasks\TaskZenith\src\components\landing\FeaturesSection.tsx
-// -- ADVANCED INTERACTIVE UPDATE --
+// D:\applications\tasks\TaskZenith\src/components\landing\FeaturesSection.tsx
 
 "use client";
+
+import React from "react";
+import { motion } from "framer-motion";
+import { CheckCircle, Zap, Users, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
-import React, { useRef } from "react";
-import { BrainCircuit, BarChart3, ListTodo, Workflow } from "lucide-react";
-import { motion, useMotionTemplate, useMotionValue } from "framer-motion";
+
+const features = [
+  {
+    icon: <Zap className="h-8 w-8 text-primary" />,
+    title: "AI-Powered Task Creation",
+    description:
+      "Simply describe your goals in plain language, and TaskZenith's AI will generate structured tasks and sub-tasks for you in seconds.",
+  },
+  {
+    icon: <Timer className="h-8 w-8 text-primary" />,
+    title: "Intelligent Focus Timer",
+    description:
+      "A smart pomodoro timer that adapts to your workflow, suggesting breaks when it detects a drop in productivity.",
+  },
+  {
+    icon: <Users className="h-8 w-8 text-primary" />,
+    title: "Seamless Collaboration",
+    description:
+      "Assign tasks, share files, and communicate with your team in one unified workspace. Real-time updates keep everyone in sync.",
+  },
+  {
+    icon: <CheckCircle className="h-8 w-8 text-primary" />,
+    title: "Automated Progress Reports",
+    description:
+      "Receive daily or weekly summaries of your achievements and upcoming deadlines, curated by our AI to keep you on track.",
+  },
+];
+
+const featureVariants = {
+  hidden: { opacity: 0, y: 50 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: "easeOut",
+    },
+  },
+};
 
 export function FeaturesSection() {
-  const features = [
-    {
-      title: "Intelligent Task Parsing",
-      description: "Describe tasks in plain English. Our AI understands, categorizes, and schedules them for you instantly.",
-      icon: <BrainCircuit className="w-10 h-10 text-cyan-300" />,
-      className: "md:col-span-2",
-    },
-    {
-      title: "Automated Prioritization",
-      description: "Let our AI analyze your task list and suggest the most critical items to focus on, maximizing your impact.",
-      icon: <ListTodo className="w-10 h-10 text-violet-300" />,
-      className: "md:col-span-1",
-    },
-    {
-      title: "Workflow Visualization",
-      description: "See your entire day, week, or month at a glance with our interactive timeline. Drag, drop, and reschedule with ease.",
-      icon: <Workflow className="w-10 h-10 text-amber-300" />,
-      className: "md:col-span-1",
-    },
-    {
-      title: "In-Depth Productivity Reports",
-      description: "Visualize your progress with beautiful, insightful reports. Understand your peak hours and optimize your workflow.",
-      icon: <BarChart3 className="w-10 h-10 text-emerald-300" />,
-      className: "md:col-span-2",
-    },
-  ];
-
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  function handleMouseMove({ currentTarget, clientX, clientY }: React.MouseEvent<HTMLDivElement>) {
-    if (!currentTarget) return;
-    let { left, top } = currentTarget.getBoundingClientRect();
-    mouseX.set(clientX - left);
-    mouseY.set(clientY - top);
-  }
-
   return (
-    <div className="py-20 md:py-32 bg-black relative">
-      <div 
-        className="max-w-7xl mx-auto px-4 group"
-        ref={containerRef}
-        onMouseMove={handleMouseMove}
-      >
+    <section id="features" className="py-20 sm:py-32 bg-background">
+      <div className="container mx-auto px-4">
         <motion.div
-            className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition duration-300 group-hover:opacity-100"
-            style={{
-                background: useMotionTemplate`
-                    radial-gradient(
-                        400px circle at ${mouseX}px ${mouseY}px,
-                        rgba(56, 189, 248, 0.1),
-                        transparent 80%
-                    )
-                `,
-            }}
-        />
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center text-white mb-12">
-          An Entirely New Way to Be Productive
-        </h2>
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
-          initial="initial"
-          whileInView="animate"
-          viewport={{ once: true }}
-          variants={{
-            initial: {},
-            animate: { transition: { staggerChildren: 0.1 } },
-          }}
+          className="max-w-3xl mx-auto text-center"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ duration: 0.6 }}
         >
-          {features.map((feature, i) => (
-            <motion.div 
-              key={i} 
+          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+            Everything You Need, Nothing You Don't
+          </h2>
+          <p className="mt-4 text-lg text-foreground/70">
+            TaskZenith is packed with powerful features designed to elevate your
+            productivity to its peak.
+          </p>
+        </motion.div>
+
+        <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          {features.map((feature, index) => (
+            <motion.div
+              key={feature.title}
               className={cn(
-                "group/bento relative flex flex-col justify-between space-y-4 rounded-2xl border border-white/10 p-6 bg-neutral-900/50 shadow-xl backdrop-blur-sm", 
-                feature.className
+                "p-8 rounded-2xl border border-border/70",
+                "bg-card/50 dark:bg-card/60", // Slight background tint
+                "hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 dark:hover:shadow-primary/10",
+                "transition-all duration-300"
               )}
-              variants={{
-                initial: { opacity: 0, y: 40 },
-                animate: { opacity: 1, y: 0 },
-              }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
+              variants={featureVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.3 }}
+              custom={index}
+              transition={{ delay: index * 0.1, duration: 0.5 }}
             >
-                <div className="absolute top-4 right-4 text-white">
-                    {feature.icon}
-                </div>
-                <div className="mt-auto">
-                    <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">{feature.title}</h3>
-                    <p className="text-neutral-400 text-sm sm:text-base">{feature.description}</p>
-                </div>
+              <div className="mb-4">{feature.icon}</div>
+              <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
+              <p className="text-foreground/70">{feature.description}</p>
             </motion.div>
           ))}
-        </motion.div>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

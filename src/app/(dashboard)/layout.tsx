@@ -1,12 +1,11 @@
 // D:\applications\tasks\TaskZenith\src\app\(dashboard)\layout.tsx
-// -- CORRECTED CODE FOR DASHBOARD LAYOUT --
-
-// هذا الملف لم يعد بحاجة إلى "use client"
-// لأنه يعرض مكونات من جانب الخادم بشكل أساسي
+// -- UPDATED WITH SOFTER BACKGROUND --
 
 import { AppShell } from "@/components/layout/AppShell";
 import { TimelineProvider } from "@/context/TimelineContext";
+import SessionProviderWrapper from "../SessionProviderWrapper";
 import type { Metadata } from "next";
+import { AppBackground } from "@/components/layout/AppBackground"; // Import the new background
 
 export const metadata: Metadata = {
   title: "TaskZenith Dashboard",
@@ -19,8 +18,13 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <TimelineProvider>
-      <AppShell>{children}</AppShell>
-    </TimelineProvider>
+    <SessionProviderWrapper>
+      <TimelineProvider>
+        {/* Apply the new background to the dashboard */}
+        <AppBackground>
+          <AppShell>{children}</AppShell>
+        </AppBackground>
+      </TimelineProvider>
+    </SessionProviderWrapper>
   );
 }
