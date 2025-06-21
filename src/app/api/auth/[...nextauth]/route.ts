@@ -1,4 +1,5 @@
-// D:\applications\tasks\4\src\app\api\auth\[...nextauth]\route.ts
+// D:\applications\tasks\TaskZenith\src\app\api\auth\[...nextauth]\route.ts
+// -- CORRECTED CODE FOR REDIRECT ISSUE --
 
 import NextAuth, { type NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
@@ -56,52 +57,72 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    // This callback ensures that a user record is created in Firebase Auth
-    // when they sign in with Google for the first time.
     async signIn({ user, account }) {
         if (account?.provider === 'google' && user.email) {
             try {
-                // Check if user already exists
                 await adminAuth.getUserByEmail(user.email);
             } catch (error: any) {
                 if (error.code === 'auth/user-not-found') {
-                    // If not, create them
                     await adminAuth.createUser({
-                        uid: user.id, // Important: Use the id from the provider
+                        uid: user.id,
                         email: user.email,
                         displayName: user.name,
                         photoURL: user.image,
                         emailVerified: true
                     });
                 } else {
-                    // For other errors, prevent sign in
+                    console.error("SignIn Error:", error);
                     return false;
                 }
             }
         }
-        // For all other cases (Credentials, Email link handled by Credentials),
-        // we trust that the user record was already handled.
         return true;
     },
+
     async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id;
         
-        // If signing in with Google, we need to get the UID from Firebase Auth
-        // as the `user.id` from the provider might differ from the Firebase UID
         if (account?.provider === "google" && user.email) {
-           const firebaseUser = await adminAuth.getUserByEmail(user.email);
-           token.id = firebaseUser.uid;
+           try {
+             const firebaseUser = await adminAuth.getUserByEmail(user.email);
+             token.id = firebaseUser.uid;
+           } catch (error) {
+             console.error("Error fetching firebase user in JWT callback:", error);
+           }
         }
       }
       return token;
     },
+
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
       }
       return session;
     },
+
+    // --- START: CORRECTED REDIRECT LOGIC ---
+    async redirect({ url, baseUrl }) {
+      // This function now robustly handles redirection.
+
+      // If the user is trying to go to a relative path within the app, allow it.
+      // This is important for deep linking (e.g., trying to access /dashboard/reports before login).
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`;
+      }
+      
+      // If the user is being redirected to a URL on the same host, allow it.
+      if (new URL(url).origin === baseUrl) {
+        return url;
+      }
+
+      // This is the default case. After any successful login (from Google or Credentials),
+      // or in any other unspecified scenario, the user will be safely
+      // redirected to the dashboard. This is the new, reliable default.
+      return `${baseUrl}/dashboard`;
+    }
+    // --- END: CORRECTED REDIRECT LOGIC ---
   },
 };
 
