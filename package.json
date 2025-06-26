@@ -47,6 +47,7 @@
     "dotenv": "^16.5.0",
     "firebase": "^11.8.1",
     "firebase-admin": "^12.7.0",
+    "framer-motion": "^12.19.1",
     "geist": "^1.4.2",
     "genkit": "^1.8.0",
     "lottie-react": "^2.4.1",
