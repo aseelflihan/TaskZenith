@@ -3,18 +3,18 @@
 import * as React from 'react';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { useTimeline } from '@/context/TimelineContext'; 
+import { useTimeline } from '../../context/TimelineContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Dialog, DialogContent, DialogTrigger, DialogClose, DialogTitle, DialogHeader, DialogFooter, DialogDescription
-} from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+} from '../ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { ScrollArea } from '../ui/scroll-area';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
+import { Input } from '../ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { 
     Calendar as CalendarIcon, CalendarDays, ChevronLeft, ChevronRight, RefreshCw, AlertTriangle, 
     Target, BrainCircuit, X, Star, Shield, ArrowDown, Briefcase, Clock, CalendarClock, 
@@ -26,16 +26,16 @@ import {
     getHours, getMinutes, parse, areIntervalsOverlapping, isWithinInterval, subMinutes, 
     differenceInSeconds, getHours as getHoursFromDate, getMinutes as getMinutesFromDate 
 } from 'date-fns';
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle as RenamedCardTitle } from "@/components/ui/card";
-import { AlertDescription } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
-import type { Task, SubTask, TaskPriority } from "@/lib/types";
-import { cn } from '@/lib/utils';
-import { useToast } from "@/hooks/use-toast";
-import { ToastAction } from "@/components/ui/toast";
-import { getTasksForUser, updateTaskSchedule, deleteSubtask } from '@/lib/actions';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Card, CardContent, CardHeader, CardTitle as RenamedCardTitle } from '../ui/card';
+import { AlertDescription } from '../ui/alert';
+import { Progress } from '../ui/progress';
+import type { Task, SubTask, TaskPriority } from '../../lib/types';
+import { cn } from '../../lib/utils';
+import { useToast } from '../../hooks/use-toast';
+import { ToastAction } from '../ui/toast';
+import { getTasksForUser, updateTaskSchedule, deleteSubtask } from '../../lib/actions';
 
 type DayTemplate = {
     name: string;

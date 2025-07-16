@@ -1,6 +1,5 @@
 // D:\applications\tasks\TaskZenith\src\ai\flows\parse-natural-language-tasks.ts
 'use server';
-// Using the correct, verified package name.
 import { ai } from '@/ai/genkit';
 import { geminiPro } from '@genkit-ai/googleai';
 import { z } from 'genkit';
@@ -34,42 +33,48 @@ const ParseNaturalLanguageInputSchema = z.object({
 export type ParseNaturalLanguageInput = z.infer<typeof ParseNaturalLanguageInputSchema>;
 
 export async function parseNaturalLanguageTasks(input: ParseNaturalLanguageInput): Promise<MainTaskParsed[]> {
+  // This function now directly calls the flow, which is the correct pattern.
+  // Assuming the flow is what we want to execute.
   const result = await parseNaturalLanguageTasksFlow(input);
   return result.tasks;
 }
 
 // ==================================================================
-// *** UPGRADED PROMPT: From Parser to Intelligent Assistant ***
+// *** PROMPT: Rule-Based Logic with Mandatory Decomposition ***
 // ==================================================================
 const prompt = ai.definePrompt({
   name: 'parseNaturalLanguageTasksPrompt',
   input: { schema: ParseNaturalLanguageInputSchema },
   output: { schema: MultiTaskOutputSchema },
-  prompt: `You are an intelligent task assistant. Your job is to convert user requests into structured tasks. You must be precise with explicit instructions and creative with general goals.
+  prompt: `You are a logical, rule-based text-processing engine. Your purpose is to classify user input and then convert it into a structured JSON format with zero ambiguity.
 The current date is {{currentDate}}. The user input is: "{{userInput}}".
 
-**Analysis Steps:**
+**Your Thought Process (Follow this strictly):**
 
-1.  **Main Title & Language:** Determine the main goal from the input. Create a clear, motivating title in the same language as the input.
+**Part 1: Classify the Input Type (Internal Thought Process)**
+First, you MUST determine the 'Input Type'. Evaluate these rules in order. The first rule that matches is the correct type.
+1.  **Is it a 'DECOMPOSITION_LIST'?** Does the input contain multiple distinct actions or items, joined by commas, conjunctions ('و', 'and'), or listed implicitly? If YES, this is the type.
+2.  **Is it a 'RANGE_EXPANSION'?** If not a list, does it contain a numerical or sequential range (e.g., "chapters 1-5", "pages 10-20")? If YES, this is the type.
+3.  **Is it a 'BRAINSTORM_GOAL'?** If not a list or range, is it a broad, abstract goal that requires planning (e.g., "Learn a new language", "Start a business")? If YES, this is the type.
+4.  **Otherwise, it is a 'SIMPLE_TASK'.**
 
-2.  **Date/Time Extraction:** Scan for any specific dates or times. If found, use them for the main task's 'deadline' and 'startTime'. If not, leave these fields as \`null\`.
+**Part 2: Generate the JSON based on the Classified Type**
+Now, generate the output based *only* on the type you determined in Part 1.
 
-3.  **Subtask Generation Logic (CRITICAL - Follow this order):**
+*   **If Type is 'DECOMPOSITION_LIST':**
+    *   The Main Title should be a short summary of the overall goal (e.g., "إنجاز المهام اليومية", "قائمة التسوق").
+    *   The Subtasks array **MUST** contain each individual item or action from the list as a separate entry. **NEVER, EVER summarize a list into a single task.**
+    *   **CORRECT EXAMPLE:** Input: "شراء مقاضي المنزل من خبز وحليب وتفاح والذهاب للتسوق في المول وتنظيف الغرفة" -> Subtasks: ["شراء خبز", "شراء حليب", "شراء تفاح", "الذهاب للتسوق في المول", "تنظيف الغرفة"].
+    *   **INCORRECT EXAMPLE (DO NOT DO THIS):** Input: "شراء مقاضي المنزل..." -> Subtasks: ["إنجاز مهام المنزل والتسوق"]. This is wrong because it summarizes instead of decomposing.
 
-    *   **Step 3a: Check for Explicit Subtasks.**
-        *   First, look for explicit instructions like ranges ("من الوحدة 1 إلى 3", "chapters 1-3"), lists, or multiple distinct actions.
-        *   If you find explicit subtasks, parse them literally and accurately.
-        *   **Example (Explicit):** Input "مراجعة الوحدة الاولى حتى الوحدة الثالثة" -> Subtasks: ["مراجعة الوحدة الأولى", "مراجعة الوحدة الثانية", "مراجعة الوحدة الثالثة"].
+*   **If Type is 'RANGE_EXPANSION':**
+    *   Create a subtask for each item in the range. Example: "review chapters 1-3" -> Subtasks: ["review chapter 1", "review chapter 2", "review chapter 3"].
 
-    *   **Step 3b: Check for General Goals (if no explicit subtasks are found).**
-        *   IF, AND ONLY IF, the input is a general goal (e.g., "Learn English", "plan a new project", "write a blog post"), act as an expert project planner.
-        *   You **MUST** brainstorm and generate a list of 3-5 logical and actionable starting subtasks to help the user begin.
-        *   **Example (General Goal):** Input "add tasks for learning English" -> Subtasks: ["Define learning goals (e.g., conversational, business)", "Master the 100 most common words", "Practice daily with a language app", "Study basic grammar rules"].
+*   **If Type is 'BRAINSTORM_GOAL':**
+    *   Act as an expert planner. Brainstorm 3-5 logical, actionable starting subtasks to help the user begin.
 
-    *   **Step 3c: Fallback for Simple Tasks.**
-        *   If the input is a simple, single-action task that is not a general goal (e.g., "Call mom", "Buy milk"), create just one subtask with the same text as the main title.
-
-4.  **Final Assembly:** Combine all the information into the final JSON object.
+*   **If Type is 'SIMPLE_TASK':**
+    *   Create a single subtask with the same text as the main title.
 `,
 });
 
@@ -82,8 +87,8 @@ const parseNaturalLanguageTasksFlow = ai.defineFlow(
   async (input) => {
     const { output } = await prompt(input, {
       model: geminiPro,
+      // The temperature is good as is, no need to change it for now.
       config: {
-        // *** MODIFICATION: Increased temperature slightly to allow for more creativity in brainstorming subtasks. ***
         temperature: 0.4,
       },
     });

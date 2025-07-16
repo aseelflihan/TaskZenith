@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import { SidebarNavContent } from "./SidebarNavContent";
 import { TimelineClock } from "./TimelineClock";
+import { QuickActionsTrigger } from "@/components/features/quick-actions/QuickActionsTrigger";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import type { Task } from "@/lib/types";
@@ -111,6 +112,7 @@ export function AppShell({ children }: AppShellProps) {
               {/* Placeholder */}
             </div>
             <div className="flex items-center gap-2">
+              <QuickActionsTrigger />
               <TimelineClock tasks={tasks} />
             </div>
           </header>

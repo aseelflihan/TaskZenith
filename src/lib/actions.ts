@@ -4,6 +4,7 @@
 
 import { revalidatePath } from 'next/cache';
 import type { Task } from "./types";
+import type { QuickTask } from "@/types/quick-task";
 import type { TaskFormData } from "@/components/tasks/TaskForm";
 import { adminDb } from '@/lib/firebase-admin';
 import { getServerSession } from "next-auth";
@@ -390,4 +391,26 @@ export async function optimizeDaySchedule(data: { tasks: Task[], date: string })
   await new Promise(resolve => setTimeout(resolve, 1500));
   
   return { success: true };
+}
+export async function saveQuickTasksAction(tasks: QuickTask[]): Promise<{ success?: boolean; error?: string }> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return { error: "User not authenticated." };
+  }
+  const userId = session.user.id;
+
+  try {
+    const quickTasksCollection = adminDb.collection(`users/${userId}/quickTasks`);
+    const batch = adminDb.batch();
+    tasks.forEach((task) => {
+      const docRef = quickTasksCollection.doc(task.id);
+      batch.set(docRef, task);
+    });
+    await batch.commit();
+    revalidatePath('/');
+    return { success: true };
+  } catch (error) {
+    console.error("[saveQuickTasksAction] Error:", error);
+    return { error: "Failed to save quick tasks." };
+  }
 }
