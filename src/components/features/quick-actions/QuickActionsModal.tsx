@@ -1,231 +1,188 @@
 // src/components/features/quick-actions/QuickActionsModal.tsx
-
 "use client";
 
-// ... (جميع الـ imports تبقى كما هي)
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { QuickTask } from "@/types/quick-task";
-import { useState } from "react";
-import { saveQuickTasksAction } from "@/lib/actions";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Palette, Trash2 } from "lucide-react";
+import { QuickTask, TaskGroup } from "@/types/quick-task";
+import { useState, useEffect, KeyboardEvent, useMemo } from "react";
+import { saveTaskGroupsAction, getTaskGroupsAction } from "@/lib/actions/quick-tasks.actions";
+import { DndContext, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core'; // Use closestCorners for better group detection
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableTaskItem } from "./SortableTaskItem";
+import { Loader2, FolderPlus, Sparkles, Plus, Trash2 } from "lucide-react"; // Import Trash2
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Textarea } from "@/components/ui/textarea";
+import { useDebouncedCallback } from 'use-debounce';
 
-
-// ... (مكون SortableTaskItem يبقى كما هو بدون تغيير)
-interface SortableTaskItemProps {
-  task: QuickTask;
-  onToggle: (id: string) => void;
-  onUpdateText: (id: string, text: string) => void;
-  onSetColor: (id: string, color: string) => void;
-  onDelete: (id: string) => void;
-}
-
-function SortableTaskItem({ task, onToggle, onUpdateText, onSetColor, onDelete }: SortableTaskItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(task.text);
-
-  const handleSaveEdit = () => {
-    onUpdateText(task.id, editText);
-    setIsEditing(false);
-  };
+// Component for rendering a single group
+function SortableGroup({ group, onDeleteGroup, onAddTask, taskHandlers }: { group: TaskGroup; onDeleteGroup: (groupId: string) => void; onAddTask: (groupId: string, text: string) => void; taskHandlers: any }) {
+  const [newTaskText, setNewTaskText] = useState("");
+  const handleAddTask = () => { if (newTaskText.trim()) { onAddTask(group.id, newTaskText.trim()); setNewTaskText(""); } };
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') handleAddTask(); };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center space-x-2 p-2 bg-gray-800/50 rounded-md">
-      <div {...attributes} {...listeners} className="cursor-grab">
-        <GripVertical className="h-5 w-5 text-gray-400" />
+    <div className="p-4 bg-slate-800/50 rounded-lg">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="font-bold text-lg text-slate-200">{group.title}</h3>
+        {/* --- NEW: Delete Group Button --- */}
+        <Button variant="ghost" size="icon" onClick={() => onDeleteGroup(group.id)} aria-label={`Delete group ${group.title}`}>
+          <Trash2 className="h-4 w-4 text-slate-500 hover:text-red-500" />
+        </Button>
       </div>
-      <Checkbox checked={task.completed} onCheckedChange={() => onToggle(task.id)} />
-      {isEditing ? (
-        <Input
-          value={editText}
-          onChange={(e) => setEditText(e.target.value)}
-          onBlur={handleSaveEdit}
-          onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
-          autoFocus
-          className="flex-grow"
-        />
-      ) : (
-        <span onClick={() => setIsEditing(true)} className={`flex-grow ${task.completed ? 'line-through' : ''}`} style={{ color: task.color }}>
-          {task.text}
-        </span>
-      )}
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Palette className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="flex space-x-1">
-            {['#ff6b6b', '#f06595', '#cc5de8', '#845ef7', '#5c7cfa', '#339af0', '#22b8cf', '#20c997', '#51cf66', '#fcc419'].map(color => (
-              <div key={color} onClick={() => onSetColor(task.id, color)} className="h-6 w-6 rounded-full cursor-pointer" style={{ backgroundColor: color }} />
-            ))}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      <Button variant="ghost" size="icon" onClick={() => onDelete(task.id)}>
-        <Trash2 className="h-4 w-4 text-red-500" />
-      </Button>
+      <SortableContext items={group.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-2 min-h-[20px]"> {/* min-h to ensure it's a valid drop target even when empty */}
+          {group.tasks.map(task => <SortableTaskItem key={task.id} task={task} {...taskHandlers} />)}
+        </div>
+      </SortableContext>
+      <div className="relative mt-3"><Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" /><Input placeholder="Add a task..." value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} onKeyDown={handleKeyDown} className="pl-9" /></div>
     </div>
   );
 }
 
-
-interface QuickActionsModalProps {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-}
-
+// Main Modal Component
+interface QuickActionsModalProps { isOpen: boolean; onOpenChange: (isOpen: boolean) => void; }
 export function QuickActionsModal({ isOpen, onOpenChange }: QuickActionsModalProps) {
-  const [text, setText] = useState("");
-  const [tasks, setTasks] = useState<QuickTask[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const [groups, setGroups] = useState<TaskGroup[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
+  const [aiText, setAiText] = useState("");
+  const [isParsing, setIsParsing] = useState(false);
+  type View = 'list' | 'ai_input';
+  const [view, setView] = useState<View>('list');
 
-  const handleParseText = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/quick-actions/parse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-      
-      const responseData = await response.json();
-      
-      // FINAL DIAGNOSTIC LOG: Let's see what the frontend receives
-      console.log("[CLIENT] Received raw data from server:", JSON.stringify(responseData, null, 2));
+  const debouncedSave = useDebouncedCallback((newGroups: TaskGroup[]) => { saveTaskGroupsAction(newGroups).catch(err => console.error("Autosave failed:", err)); }, 1500);
 
-      if (response.ok) {
-        // --- THIS IS THE CORRECTED LOGIC ---
-        // The API returns an array like [{ text: 'Main Title', subtasks: [...] }]
-        // We need to extract the subtasks from the FIRST element of the array.
-        
-        const mainTask = responseData[0];
-        if (mainTask && Array.isArray(mainTask.subtasks)) {
-          const extractedSubtasks = mainTask.subtasks;
-
-          setTasks(
-            extractedSubtasks.map((subtask: { text: string }, index: number) => ({
-              id: crypto.randomUUID(),
-              text: subtask.text,
-              completed: false,
-              order: index,
-              color: undefined,
-            }))
-          );
-        } else {
-            // Fallback for simple cases where the API might just return an array of tasks
-            const rawTasks: { text: string; [key: string]: any }[] = responseData;
-            setTasks(
-              rawTasks.map((task, index) => ({
-                id: crypto.randomUUID(),
-                text: task.text,
-                completed: false,
-                order: index,
-                color: undefined,
-              }))
-            );
-        }
-        // --- END OF CORRECTED LOGIC ---
-        
-      } else {
-        console.error("Failed to parse tasks. Server responded with:", responseData);
-      }
-    } catch (error) {
-      console.error("Error parsing tasks (network or JSON issue):", error);
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (isOpen) {
+      setIsFetching(true);
+      getTaskGroupsAction().then(existingGroups => {
+        if (existingGroups.length === 0) { setView('ai_input'); } 
+        else { setGroups(existingGroups); setView('list'); }
+      }).catch(err => { console.error("Failed to fetch groups:", err); setView('ai_input'); })
+      .finally(() => setIsFetching(false));
     }
-  };
-  
-  // ... (بقية الملف لم يتغير)
-  const handleSaveTasks = async () => {
-    try {
-      await saveQuickTasksAction(tasks);
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error saving tasks:", error);
-    }
-  };
-  const handleToggleTask = (id: string) => {
-    setTasks(tasks.map(task => task.id === id ? { ...task, completed: !task.completed } : task));
-  };
-  const handleUpdateTaskText = (id: string, newText: string) => {
-    setTasks(tasks.map(task => task.id === id ? { ...task, text: newText } : task));
-  };
-  const handleSetTaskColor = (id: string, color: string) => {
-    setTasks(tasks.map(task => task.id === id ? { ...task, color } : task));
-  };
-  const handleDeleteTask = (id: string) => {
-    setTasks(tasks.filter(task => task.id !== id));
-  };
+  }, [isOpen]);
+
+  useEffect(() => { if (!isFetching) { debouncedSave(groups); } }, [groups, isFetching, debouncedSave]);
+
+  const allItemIds = useMemo(() => [ ...groups.map(g => g.id), ...groups.flatMap(g => g.tasks.map(t => t.id)) ], [groups]);
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+
+  // --- NEW: Rewritten handleDragEnd to support cross-group dragging ---
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setTasks((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
+    if (!over) return;
+  
+    const activeId = active.id as string;
+    const overId = over.id as string;
+  
+    if (activeId === overId) return;
+  
+    const activeIsTask = !groups.some(g => g.id === activeId);
+    if (!activeIsTask) return; // We are not dragging groups for now
+  
+    setGroups(prev => {
+      let newGroups = JSON.parse(JSON.stringify(prev));
+      const sourceGroup = newGroups.find((g: TaskGroup) => g.tasks.some(t => t.id === activeId));
+      if (!sourceGroup) return prev;
+  
+      const taskIndex = sourceGroup.tasks.findIndex((t: QuickTask) => t.id === activeId);
+      const [movedTask] = sourceGroup.tasks.splice(taskIndex, 1);
+  
+      const overIsGroupContainer = newGroups.some((g: TaskGroup) => g.id === overId);
+      let destGroup;
+      let newIndex;
+  
+      if (overIsGroupContainer) {
+        destGroup = newGroups.find((g: TaskGroup) => g.id === overId);
+        newIndex = destGroup.tasks.length; // Add to the end of the group
+      } else {
+        destGroup = newGroups.find((g: TaskGroup) => g.tasks.some(t => t.id === overId));
+        if (!destGroup) return prev; // Should not happen
+        newIndex = destGroup.tasks.findIndex((t: QuickTask) => t.id === overId);
+      }
+  
+      destGroup.tasks.splice(newIndex, 0, movedTask);
+  
+      // Re-order all tasks within their groups
+      newGroups.forEach((g: TaskGroup) => g.tasks.forEach((t: QuickTask, i: number) => t.order = i));
+      return newGroups;
+    });
   };
 
+  const taskHandlers = {
+    onToggleTask: (taskId: string) => setGroups(g => g.map(gr => ({ ...gr, tasks: gr.tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t) }))),
+    onUpdateTaskText: (taskId: string, newText: string) => setGroups(g => g.map(gr => ({ ...gr, tasks: gr.tasks.map(t => t.id === taskId ? { ...t, text: newText } : t) }))),
+    onSetTaskColor: (taskId: string, color: string) => setGroups(g => g.map(gr => ({ ...gr, tasks: gr.tasks.map(t => t.id === taskId ? { ...t, color } : t) }))),
+    onDeleteTask: (taskId: string) => setGroups(g => g.map(gr => ({ ...gr, tasks: gr.tasks.filter(t => t.id !== taskId) }))),
+  };
+
+  const handleAddTask = (groupId: string, text: string) => setGroups(g => g.map(gr => gr.id === groupId ? { ...gr, tasks: [...gr.tasks, { id: crypto.randomUUID(), text, completed: false, order: gr.tasks.length }] } : gr));
+  const handleAddGroup = () => { const name = prompt("New group name:"); if (name && name.trim()) setGroups(g => [...g, { id: crypto.randomUUID(), title: name, tasks: [] }]); };
+  
+  // --- NEW: Handler to delete a group ---
+  const handleDeleteGroup = (groupId: string) => { if(confirm("Are you sure you want to delete this group and all its tasks?")) { setGroups(g => g.filter(gr => gr.id !== groupId)); }};
+  
+  // --- NEW: Handler to clear everything ---
+  const handleClearAll = () => { if(confirm("Are you sure you want to delete ALL groups and tasks?")) { setGroups([]); setView('ai_input'); }};
+  
+  const handleParseText = async () => {
+    setIsParsing(true);
+    try {
+      const response = await fetch('/api/quick-actions/parse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: aiText }) });
+      const responseData = await response.json();
+      if (response.ok) {
+        const mainTask = responseData[0];
+        if (mainTask && Array.isArray(mainTask.subtasks) && mainTask.subtasks.length > 0) {
+          const newTasks = mainTask.subtasks.map((sub: { text: string }, i: number) => ({ id: crypto.randomUUID(), text: sub.text, completed: false, order: i }));
+          const newGroup: TaskGroup = { id: crypto.randomUUID(), title: mainTask.text || "AI Generated Tasks", tasks: newTasks };
+          setGroups(g => [...g, newGroup]);
+          setAiText("");
+          setView('list');
+        }
+      } else { console.error("AI Parse Error:", responseData); }
+    } catch (error) { console.error("Fetch AI Error:", error); }
+    finally { setIsParsing(false); }
+  };
+
+  const renderContent = () => {
+    if (isFetching) return <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-slate-500" /></div>;
+    if (view === 'ai_input') {
+      return (
+        <div className="space-y-4 py-4">
+          <Textarea placeholder="e.g., plan a trip to Japan, buy groceries for the week, clean the house..." value={aiText} onChange={(e) => setAiText(e.target.value)} rows={5} />
+          <div className="flex justify-end space-x-2">
+            {groups.length > 0 && <Button variant="ghost" onClick={() => setView('list')}>Cancel</Button>}
+            <Button onClick={handleParseText} disabled={isParsing || !aiText.trim()}>{isParsing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Organize with AI</Button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-4 py-4">
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            <SortableContext items={allItemIds} strategy={verticalListSortingStrategy}>
+              {groups.map(group => <SortableGroup key={group.id} group={group} onDeleteGroup={handleDeleteGroup} onAddTask={handleAddTask} taskHandlers={taskHandlers} />)}
+            </SortableContext>
+          </div>
+        </DndContext>
+        <div className="flex justify-between items-center pt-4 border-t border-slate-800">
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleAddGroup}><FolderPlus className="mr-2 h-4 w-4" /> Add Group</Button>
+            <Button variant="ghost" onClick={() => setView('ai_input')}><Sparkles className="mr-2 h-4 w-4" /> Add with AI</Button>
+          </div>
+          {/* --- NEW: Clear All button --- */}
+          <Button variant="destructive" onClick={handleClearAll}>Clear All</Button>
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Quick Actions</DialogTitle>
-        </DialogHeader>
-        {tasks.length === 0 ? (
-          <div className="space-y-4">
-            <Textarea
-              placeholder="e.g., مراجعة بريد العملاء وتصميم بانر لحملة الخميس"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={5}
-            />
-            <Button onClick={handleParseText} disabled={isLoading || !text.trim()}>
-              {isLoading ? "Processing..." : "Organize with AI"}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={tasks} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2">
-                  {tasks.map(task => (
-                    <SortableTaskItem
-                      key={task.id}
-                      task={task}
-                      onToggle={handleToggleTask}
-                      onUpdateText={handleUpdateTaskText}
-                      onSetColor={handleSetTaskColor}
-                      onDelete={handleDeleteTask}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setTasks([])}>Start Over</Button>
-              <Button onClick={handleSaveTasks}>Save Tasks</Button>
-            </div>
-          </div>
-        )}
+      <DialogContent className="max-w-4xl min-h-[50vh]">
+        <DialogHeader><DialogTitle>Quick Actions</DialogTitle></DialogHeader>
+        {renderContent()}
       </DialogContent>
     </Dialog>
   );
