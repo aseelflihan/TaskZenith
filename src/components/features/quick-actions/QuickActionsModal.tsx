@@ -47,26 +47,47 @@ function NewGroupForm({ onSave, onCancel }: { onSave: (title: string, icon: Icon
     <div className="p-4 bg-slate-800 rounded-lg space-y-3">
       <Input placeholder="New group name..." value={title} onChange={e => setTitle(e.target.value)} autoFocus />
       <IconPicker selected={selectedIcon} onSelectIcon={setSelectedIcon} />
-      <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onCancel}>Cancel</Button><Button onClick={() => title.trim() && onSave(title.trim(), selectedIcon)}>Save Group</Button></div>
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+        <Button variant="ghost" onClick={onCancel} className="w-full sm:w-auto">Cancel</Button>
+        <Button onClick={() => title.trim() && onSave(title.trim(), selectedIcon)} className="w-full sm:w-auto">Save Group</Button>
+      </div>
     </div>
   );
 }
 
-// --- UPDATED: Sortable Group Component with AlertDialog ---
+// --- NEW: Placeholder component for empty groups to enable dropping ---
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+function EmptyGroupPlaceholder({ id }: { id: string }) {
+    const { setNodeRef, transform, transition } = useSortable({ id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        height: '50px', // Give it some height to be a valid drop target
+        border: '2px dashed #374151', // slate-700
+        borderRadius: '0.5rem', // rounded-lg
+        backgroundColor: 'rgba(30, 41, 59, 0.5)', // slate-800 with 50% opacity
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#64748b', // slate-500
+        marginTop: '0.5rem',
+    };
+    return <div ref={setNodeRef} style={style}>Drop a task here</div>;
+}
+
 function SortableGroup({ group, onDeleteGroup, onAddTask, taskHandlers }: { group: TaskGroup; onDeleteGroup: (groupId: string) => void; onAddTask: (groupId: string, text: string) => void; taskHandlers: any }) {
   const [newTaskText, setNewTaskText] = useState("");
   const handleAddTask = () => { if (newTaskText.trim()) { onAddTask(group.id, newTaskText.trim()); setNewTaskText(""); } };
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') handleAddTask(); };
   const Icon = LucideIcons[group.icon as keyof typeof LucideIcons] as React.ElementType || LucideIcons.Briefcase;
   
-  // --- FIX: Add a placeholder ID when the group is empty to make it a valid drop target ---
+  const placeholderId = `placeholder-${group.id}`;
   const sortableItems = useMemo(() => {
     const taskIds = group.tasks.map(t => t.id);
-    if (taskIds.length === 0) {
-      return [`placeholder-${group.id}`];
-    }
-    return taskIds;
-  }, [group.tasks, group.id]);
+    return taskIds.length > 0 ? taskIds : [placeholderId];
+  }, [group.tasks, group.id, placeholderId]);
 
   return (
     <div id={group.id} className="p-4 bg-slate-800/50 rounded-lg">
@@ -82,10 +103,10 @@ function SortableGroup({ group, onDeleteGroup, onAddTask, taskHandlers }: { grou
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      {/* --- FIX: Use the new sortableItems array --- */}
       <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
         <div className="space-y-2 min-h-[20px]">
           {group.tasks.map(task => <SortableTaskItem key={task.id} task={task} {...taskHandlers} />)}
+          {group.tasks.length === 0 && <EmptyGroupPlaceholder id={placeholderId} />}
         </div>
       </SortableContext>
       <div className="relative mt-3"><Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" /><Input placeholder="Add a task..." value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} onKeyDown={handleKeyDown} className="pl-9" /></div>
@@ -213,16 +234,32 @@ export function QuickActionsModal({ isOpen, onOpenChange }: QuickActionsModalPro
     return (
       <div className="space-y-4 py-4">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={e => setActiveId(e.active.id as string)} onDragEnd={handleDragEnd}>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+          <div className="space-y-4 max-h-[70vh] sm:max-h-[60vh] overflow-y-auto pr-2">
               {groups.map(group => <SortableGroup key={group.id} group={group} onDeleteGroup={handleDeleteGroup} onAddTask={handleAddTask} taskHandlers={taskHandlers} />)}
             {isAddingGroup && <NewGroupForm onSave={handleAddGroup} onCancel={() => setIsAddingGroup(false)} />}
           </div>
         </DndContext>
-        <div className="flex justify-between items-center pt-4 border-t border-slate-800">
-          <div className="flex gap-2"><Button variant="outline" onClick={() => setIsAddingGroup(true)} disabled={isAddingGroup}><FolderPlus className="mr-2 h-4 w-4" /> Add Group</Button><Button variant="ghost" onClick={() => setView('ai_input')}><Sparkles className="mr-2 h-4 w-4" /> Add with AI</Button></div>
-          <AlertDialog><AlertDialogTrigger asChild><Button variant="destructive-outline">Clear All</Button></AlertDialogTrigger>
-          <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete ALL groups and tasks. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleClearAll}>Yes, Clear All</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-4 border-t border-slate-800 gap-4">
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={() => setIsAddingGroup(true)} disabled={isAddingGroup} className="flex-grow sm:flex-grow-0">
+              <FolderPlus className="mr-2 h-4 w-4" /> Add Group
+            </Button>
+            <Button variant="ghost" onClick={() => setView('ai_input')} className="flex-grow sm:flex-grow-0">
+              <Sparkles className="mr-2 h-4 w-4" /> Add with AI
+            </Button>
+          </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive-outline" className="w-full sm:w-auto">Clear All</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete ALL groups and tasks. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleClearAll}>Yes, Clear All</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     );
@@ -230,7 +267,7 @@ export function QuickActionsModal({ isOpen, onOpenChange }: QuickActionsModalPro
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl min-h-[50vh]">
+      <DialogContent className="w-[95vw] max-w-4xl min-h-[50vh] sm:w-full">
         <DialogHeader><DialogTitle>Quick Actions</DialogTitle></DialogHeader>
         {renderContent()}
       </DialogContent>

@@ -47,7 +47,7 @@ export function SortableTaskItem({ task, onToggleTask, onUpdateTaskText, onSetTa
       )}
       <Popover open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="Change color" className="opacity-50 group-hover:opacity-100 transition-opacity">
+          <Button variant="ghost" size="icon" aria-label="Change color" className="opacity-70 hover:opacity-100 transition-opacity">
             <Palette className="h-4 w-4" />
           </Button>
         </PopoverTrigger>
@@ -59,7 +59,7 @@ export function SortableTaskItem({ task, onToggleTask, onUpdateTaskText, onSetTa
           </div>
         </PopoverContent>
       </Popover>
-      <Button variant="ghost" size="icon" onClick={() => onDeleteTask(task.id)} aria-label="Delete task" className="opacity-50 group-hover:opacity-100 transition-opacity">
+      <Button variant="ghost" size="icon" onClick={() => onDeleteTask(task.id)} aria-label="Delete task" className="opacity-70 hover:opacity-100 transition-opacity">
         <Trash2 className="h-4 w-4 text-red-500" />
       </Button>
     </div>
