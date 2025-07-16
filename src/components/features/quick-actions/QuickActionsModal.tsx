@@ -6,31 +6,85 @@ import { Button } from "@/components/ui/button";
 import { QuickTask, TaskGroup } from "@/types/quick-task";
 import { useState, useEffect, KeyboardEvent, useMemo } from "react";
 import { saveTaskGroupsAction, getTaskGroupsAction } from "@/lib/actions/quick-tasks.actions";
-import { DndContext, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core'; // Use closestCorners for better group detection
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableTaskItem } from "./SortableTaskItem";
-import { Loader2, FolderPlus, Sparkles, Plus, Trash2 } from "lucide-react"; // Import Trash2
+import { Loader2, FolderPlus, Sparkles, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useDebouncedCallback } from 'use-debounce';
+import * as LucideIcons from "lucide-react";
+// --- NEW: Import AlertDialog for better confirmation dialogs ---
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
-// Component for rendering a single group
+// --- Icon Picker Component (No changes) ---
+const availableIcons = ["Briefcase", "Home", "Plane", "Book", "Code", "Heart"] as const;
+type IconName = typeof availableIcons[number];
+const IconPicker = ({ selected, onSelectIcon }: { selected: IconName, onSelectIcon: (iconName: IconName) => void }) => (
+  <div className="flex gap-2 p-1 bg-slate-900 rounded-md">
+    {availableIcons.map(iconName => {
+      const Icon = LucideIcons[iconName as keyof typeof LucideIcons] as React.ElementType;
+      return <Button key={iconName} variant={selected === iconName ? "secondary" : "ghost"} size="icon" onClick={() => onSelectIcon(iconName)}><Icon className="h-4 w-4" /></Button>;
+    })}
+  </div>
+);
+
+// --- New Group Form Component (No changes) ---
+function NewGroupForm({ onSave, onCancel }: { onSave: (title: string, icon: IconName) => void, onCancel: () => void }) {
+  const [title, setTitle] = useState("");
+  const [selectedIcon, setSelectedIcon] = useState<IconName>("Briefcase");
+  return (
+    <div className="p-4 bg-slate-800 rounded-lg space-y-3">
+      <Input placeholder="New group name..." value={title} onChange={e => setTitle(e.target.value)} autoFocus />
+      <IconPicker selected={selectedIcon} onSelectIcon={setSelectedIcon} />
+      <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onCancel}>Cancel</Button><Button onClick={() => title.trim() && onSave(title.trim(), selectedIcon)}>Save Group</Button></div>
+    </div>
+  );
+}
+
+// --- UPDATED: Sortable Group Component with AlertDialog ---
 function SortableGroup({ group, onDeleteGroup, onAddTask, taskHandlers }: { group: TaskGroup; onDeleteGroup: (groupId: string) => void; onAddTask: (groupId: string, text: string) => void; taskHandlers: any }) {
   const [newTaskText, setNewTaskText] = useState("");
   const handleAddTask = () => { if (newTaskText.trim()) { onAddTask(group.id, newTaskText.trim()); setNewTaskText(""); } };
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') handleAddTask(); };
+  const Icon = LucideIcons[group.icon as keyof typeof LucideIcons] as React.ElementType || LucideIcons.Briefcase;
+  
+  // --- FIX: Add a placeholder ID when the group is empty to make it a valid drop target ---
+  const sortableItems = useMemo(() => {
+    const taskIds = group.tasks.map(t => t.id);
+    if (taskIds.length === 0) {
+      return [`placeholder-${group.id}`];
+    }
+    return taskIds;
+  }, [group.tasks, group.id]);
 
   return (
-    <div className="p-4 bg-slate-800/50 rounded-lg">
+    <div id={group.id} className="p-4 bg-slate-800/50 rounded-lg">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="font-bold text-lg text-slate-200">{group.title}</h3>
-        {/* --- NEW: Delete Group Button --- */}
-        <Button variant="ghost" size="icon" onClick={() => onDeleteGroup(group.id)} aria-label={`Delete group ${group.title}`}>
-          <Trash2 className="h-4 w-4 text-slate-500 hover:text-red-500" />
-        </Button>
+        <div className="flex items-center gap-2"><Icon className="h-5 w-5 text-slate-400" /><h3 className="font-bold text-lg text-slate-200">{group.title}</h3></div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label={`Delete group ${group.title}`}><Trash2 className="h-4 w-4 text-slate-500 hover:text-red-500" /></Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the "{group.title}" group and all its tasks. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => onDeleteGroup(group.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-      <SortableContext items={group.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2 min-h-[20px]"> {/* min-h to ensure it's a valid drop target even when empty */}
+      {/* --- FIX: Use the new sortableItems array --- */}
+      <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
+        <div className="space-y-2 min-h-[20px]">
           {group.tasks.map(task => <SortableTaskItem key={task.id} task={task} {...taskHandlers} />)}
         </div>
       </SortableContext>
@@ -39,92 +93,91 @@ function SortableGroup({ group, onDeleteGroup, onAddTask, taskHandlers }: { grou
   );
 }
 
-// Main Modal Component
+// --- REBUILT: Main Modal Component ---
 interface QuickActionsModalProps { isOpen: boolean; onOpenChange: (isOpen: boolean) => void; }
 export function QuickActionsModal({ isOpen, onOpenChange }: QuickActionsModalProps) {
   const [groups, setGroups] = useState<TaskGroup[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [aiText, setAiText] = useState("");
   const [isParsing, setIsParsing] = useState(false);
+  const [isAddingGroup, setIsAddingGroup] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
   type View = 'list' | 'ai_input';
   const [view, setView] = useState<View>('list');
-
   const debouncedSave = useDebouncedCallback((newGroups: TaskGroup[]) => { saveTaskGroupsAction(newGroups).catch(err => console.error("Autosave failed:", err)); }, 1500);
-
+  
   useEffect(() => {
     if (isOpen) {
       setIsFetching(true);
       getTaskGroupsAction().then(existingGroups => {
-        if (existingGroups.length === 0) { setView('ai_input'); } 
-        else { setGroups(existingGroups); setView('list'); }
+        setGroups(existingGroups);
+        setView(existingGroups.length === 0 ? 'ai_input' : 'list');
       }).catch(err => { console.error("Failed to fetch groups:", err); setView('ai_input'); })
       .finally(() => setIsFetching(false));
-    }
+    } else { setIsAddingGroup(false); }
   }, [isOpen]);
+  
+  useEffect(() => { if (!isFetching) debouncedSave(groups); }, [groups, isFetching, debouncedSave]);
 
-  useEffect(() => { if (!isFetching) { debouncedSave(groups); } }, [groups, isFetching, debouncedSave]);
-
-  const allItemIds = useMemo(() => [ ...groups.map(g => g.id), ...groups.flatMap(g => g.tasks.map(t => t.id)) ], [groups]);
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
-
-  // --- NEW: Rewritten handleDragEnd to support cross-group dragging ---
+  
+  // --- FINAL: Rewritten handleDragEnd to be robust and reliable ---
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveId(null);
     if (!over) return;
-  
-    const activeId = active.id as string;
-    const overId = over.id as string;
-  
-    if (activeId === overId) return;
-  
-    const activeIsTask = !groups.some(g => g.id === activeId);
-    if (!activeIsTask) return; // We are not dragging groups for now
-  
-    setGroups(prev => {
-      let newGroups = JSON.parse(JSON.stringify(prev));
-      const sourceGroup = newGroups.find((g: TaskGroup) => g.tasks.some(t => t.id === activeId));
-      if (!sourceGroup) return prev;
-  
-      const taskIndex = sourceGroup.tasks.findIndex((t: QuickTask) => t.id === activeId);
-      const [movedTask] = sourceGroup.tasks.splice(taskIndex, 1);
-  
-      const overIsGroupContainer = newGroups.some((g: TaskGroup) => g.id === overId);
-      let destGroup;
-      let newIndex;
-  
-      if (overIsGroupContainer) {
-        destGroup = newGroups.find((g: TaskGroup) => g.id === overId);
-        newIndex = destGroup.tasks.length; // Add to the end of the group
-      } else {
-        destGroup = newGroups.find((g: TaskGroup) => g.tasks.some(t => t.id === overId));
-        if (!destGroup) return prev; // Should not happen
-        newIndex = destGroup.tasks.findIndex((t: QuickTask) => t.id === overId);
+    const activeIdStr = active.id as string;
+    let overIdStr = over.id as string;
+    if (activeIdStr === overIdStr) return;
+
+    setGroups((prev) => {
+      const sourceGroupIndex = prev.findIndex(g => g.tasks.some(t => t.id === activeIdStr));
+      if (sourceGroupIndex === -1) return prev; // Task not found
+
+      const taskIndex = prev[sourceGroupIndex].tasks.findIndex(t => t.id === activeIdStr);
+      const movedTask = prev[sourceGroupIndex].tasks[taskIndex];
+
+      // --- FIX: Correctly identify the destination group, even if it's empty ---
+      const overIsPlaceholder = overIdStr.startsWith('placeholder-');
+      const overGroupId = overIsPlaceholder ? overIdStr.replace('placeholder-', '') : overIdStr;
+      
+      let destGroupIndex = prev.findIndex(g => g.id === overGroupId || g.tasks.some(t => t.id === overGroupId));
+      if (destGroupIndex === -1) return prev; // Drop target group not found
+
+      const newGroups = JSON.parse(JSON.stringify(prev));
+      
+      // Remove from source
+      newGroups[sourceGroupIndex].tasks.splice(taskIndex, 1);
+      
+      // Add to destination
+      const overIsGroupContainer = prev[destGroupIndex].id === overGroupId;
+      const overIsTask = prev[destGroupIndex].tasks.some(t => t.id === overGroupId);
+
+      let destTaskIndex = newGroups[destGroupIndex].tasks.length; // Default to end of list
+      if (overIsTask) {
+        destTaskIndex = newGroups[destGroupIndex].tasks.findIndex((t: QuickTask) => t.id === overGroupId);
       }
-  
-      destGroup.tasks.splice(newIndex, 0, movedTask);
-  
-      // Re-order all tasks within their groups
+      
+      newGroups[destGroupIndex].tasks.splice(destTaskIndex, 0, movedTask);
+      
+      // Re-order all tasks
       newGroups.forEach((g: TaskGroup) => g.tasks.forEach((t: QuickTask, i: number) => t.order = i));
       return newGroups;
     });
   };
-
+  
   const taskHandlers = {
     onToggleTask: (taskId: string) => setGroups(g => g.map(gr => ({ ...gr, tasks: gr.tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t) }))),
     onUpdateTaskText: (taskId: string, newText: string) => setGroups(g => g.map(gr => ({ ...gr, tasks: gr.tasks.map(t => t.id === taskId ? { ...t, text: newText } : t) }))),
     onSetTaskColor: (taskId: string, color: string) => setGroups(g => g.map(gr => ({ ...gr, tasks: gr.tasks.map(t => t.id === taskId ? { ...t, color } : t) }))),
     onDeleteTask: (taskId: string) => setGroups(g => g.map(gr => ({ ...gr, tasks: gr.tasks.filter(t => t.id !== taskId) }))),
   };
-
+  
   const handleAddTask = (groupId: string, text: string) => setGroups(g => g.map(gr => gr.id === groupId ? { ...gr, tasks: [...gr.tasks, { id: crypto.randomUUID(), text, completed: false, order: gr.tasks.length }] } : gr));
-  const handleAddGroup = () => { const name = prompt("New group name:"); if (name && name.trim()) setGroups(g => [...g, { id: crypto.randomUUID(), title: name, tasks: [] }]); };
-  
-  // --- NEW: Handler to delete a group ---
-  const handleDeleteGroup = (groupId: string) => { if(confirm("Are you sure you want to delete this group and all its tasks?")) { setGroups(g => g.filter(gr => gr.id !== groupId)); }};
-  
-  // --- NEW: Handler to clear everything ---
-  const handleClearAll = () => { if(confirm("Are you sure you want to delete ALL groups and tasks?")) { setGroups([]); setView('ai_input'); }};
-  
+  const handleAddGroup = (title: string, icon: IconName) => { setGroups(g => [...g, { id: crypto.randomUUID(), title, icon, tasks: [] }]); setIsAddingGroup(false); };
+  const handleDeleteGroup = (groupId: string) => setGroups(g => g.filter(gr => gr.id !== groupId));
+  const handleClearAll = () => { setGroups([]); setView('ai_input'); };
+
   const handleParseText = async () => {
     setIsParsing(true);
     try {
@@ -134,7 +187,7 @@ export function QuickActionsModal({ isOpen, onOpenChange }: QuickActionsModalPro
         const mainTask = responseData[0];
         if (mainTask && Array.isArray(mainTask.subtasks) && mainTask.subtasks.length > 0) {
           const newTasks = mainTask.subtasks.map((sub: { text: string }, i: number) => ({ id: crypto.randomUUID(), text: sub.text, completed: false, order: i }));
-          const newGroup: TaskGroup = { id: crypto.randomUUID(), title: mainTask.text || "AI Generated Tasks", tasks: newTasks };
+          const newGroup: TaskGroup = { id: crypto.randomUUID(), title: mainTask.text || "AI Generated Tasks", icon: "Sparkles", tasks: newTasks };
           setGroups(g => [...g, newGroup]);
           setAiText("");
           setView('list');
@@ -149,7 +202,7 @@ export function QuickActionsModal({ isOpen, onOpenChange }: QuickActionsModalPro
     if (view === 'ai_input') {
       return (
         <div className="space-y-4 py-4">
-          <Textarea placeholder="e.g., plan a trip to Japan, buy groceries for the week, clean the house..." value={aiText} onChange={(e) => setAiText(e.target.value)} rows={5} />
+          <Textarea placeholder="e.g., plan a trip to Japan including booking flights and hotels, buy groceries for the week..." value={aiText} onChange={(e) => setAiText(e.target.value)} rows={5} />
           <div className="flex justify-end space-x-2">
             {groups.length > 0 && <Button variant="ghost" onClick={() => setView('list')}>Cancel</Button>}
             <Button onClick={handleParseText} disabled={isParsing || !aiText.trim()}>{isParsing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Organize with AI</Button>
@@ -159,20 +212,17 @@ export function QuickActionsModal({ isOpen, onOpenChange }: QuickActionsModalPro
     }
     return (
       <div className="space-y-4 py-4">
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={e => setActiveId(e.active.id as string)} onDragEnd={handleDragEnd}>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-            <SortableContext items={allItemIds} strategy={verticalListSortingStrategy}>
               {groups.map(group => <SortableGroup key={group.id} group={group} onDeleteGroup={handleDeleteGroup} onAddTask={handleAddTask} taskHandlers={taskHandlers} />)}
-            </SortableContext>
+            {isAddingGroup && <NewGroupForm onSave={handleAddGroup} onCancel={() => setIsAddingGroup(false)} />}
           </div>
         </DndContext>
         <div className="flex justify-between items-center pt-4 border-t border-slate-800">
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleAddGroup}><FolderPlus className="mr-2 h-4 w-4" /> Add Group</Button>
-            <Button variant="ghost" onClick={() => setView('ai_input')}><Sparkles className="mr-2 h-4 w-4" /> Add with AI</Button>
-          </div>
-          {/* --- NEW: Clear All button --- */}
-          <Button variant="destructive" onClick={handleClearAll}>Clear All</Button>
+          <div className="flex gap-2"><Button variant="outline" onClick={() => setIsAddingGroup(true)} disabled={isAddingGroup}><FolderPlus className="mr-2 h-4 w-4" /> Add Group</Button><Button variant="ghost" onClick={() => setView('ai_input')}><Sparkles className="mr-2 h-4 w-4" /> Add with AI</Button></div>
+          <AlertDialog><AlertDialogTrigger asChild><Button variant="destructive-outline">Clear All</Button></AlertDialogTrigger>
+          <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete ALL groups and tasks. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleClearAll}>Yes, Clear All</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
         </div>
       </div>
     );

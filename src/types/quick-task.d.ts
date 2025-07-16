@@ -19,4 +19,8 @@ export interface TaskGroup {
   id: string;          // Unique identifier for the group
   title: string;       // The title of the group (e.g., "Work", "Home")
   tasks: QuickTask[];  // An array of tasks belonging to this group
+  
+  // --- NEW FEATURE ADDED ---
+  // Optional: The name of the lucide-react icon for the group
+  icon?: string;
 }

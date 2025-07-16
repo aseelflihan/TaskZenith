@@ -1,14 +1,11 @@
 // D:\applications\tasks\final\TaskZenith\src\lib\actions\quick-tasks.actions.ts
 "use server";
 
-// --- CHANGE 1: Import both TaskGroup and QuickTask types ---
 import { TaskGroup, QuickTask } from "@/types/quick-task";
-
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { adminDb } from "@/lib/firebase-admin";
 
-// --- CHANGE 2: The save function now accepts an array of TaskGroup ---
 export async function saveTaskGroupsAction(groups: TaskGroup[]) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -16,60 +13,75 @@ export async function saveTaskGroupsAction(groups: TaskGroup[]) {
   }
 
   const userId = session.user.id;
-  // We will now use a top-level collection for groups
   const groupsCollection = adminDb.collection(`users/${userId}/taskGroups`);
-
   const batch = adminDb.batch();
 
-  // The logic now iterates through groups and their tasks
-  groups.forEach((group) => {
+  // --- IMPROVEMENT: Handle deleted groups ---
+  // This logic ensures that if a group is deleted on the client,
+  // it gets deleted from the database as well.
+  const groupsToSaveIds = new Set(groups.map(g => g.id));
+  const existingGroupsSnapshot = await groupsCollection.get();
+  existingGroupsSnapshot.forEach(doc => {
+    if (!groupsToSaveIds.has(doc.id)) {
+      batch.delete(doc.ref);
+    }
+  });
+
+  // --- FIX: Use a for...of loop to handle async operations correctly ---
+  for (const group of groups) {
     const groupDocRef = groupsCollection.doc(group.id);
     
-    // Save the group's metadata (id and title)
-    batch.set(groupDocRef, {
+    // Prepare group data
+    const groupData: any = {
       id: group.id,
       title: group.title,
-    });
+    };
+    if (group.icon) {
+      groupData.icon = group.icon;
+    }
+    batch.set(groupDocRef, groupData, { merge: true });
     
-    // For each task within the group, save it in a sub-collection
+    const tasksCollectionRef = groupDocRef.collection('tasks');
+    
+    // --- NEW: Logic to handle deleted tasks within a group ---
+    const clientTaskIds = new Set(group.tasks.map(t => t.id));
+    const existingTasksSnapshot = await tasksCollectionRef.get();
+    existingTasksSnapshot.forEach(doc => {
+        if (!clientTaskIds.has(doc.id)) {
+            batch.delete(doc.ref);
+        }
+    });
+
+    // --- Logic to update/create tasks ---
     group.tasks.forEach(task => {
-        const taskDocRef = groupDocRef.collection('tasks').doc(task.id);
+        const taskDocRef = tasksCollectionRef.doc(task.id);
         const taskData: any = {
             id: task.id,
             text: task.text,
             completed: task.completed,
             order: task.order,
         };
-        // Conditionally add color only if it exists
-        if (task.color) {
-            taskData.color = task.color;
-        }
+        if (task.color) { taskData.color = task.color; }
         batch.set(taskDocRef, taskData);
     });
-  });
+  }
 
   await batch.commit();
-
   return { success: true };
 }
 
-// --- CHANGE 3: The get function now returns an array of TaskGroup ---
+
 export async function getTaskGroupsAction(): Promise<TaskGroup[]> {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return [];
-  }
+  if (!session?.user?.id) { return []; }
 
   const userId = session.user.id;
   try {
     const groupsCollection = adminDb.collection(`users/${userId}/taskGroups`);
     const groupsSnapshot = await groupsCollection.get();
     
-    if (groupsSnapshot.empty) {
-      return [];
-    }
+    if (groupsSnapshot.empty) { return []; }
     
-    // Use Promise.all to fetch all tasks for all groups concurrently
     const groupsWithTasks = await Promise.all(
       groupsSnapshot.docs.map(async (groupDoc) => {
         const groupData = groupDoc.data();
@@ -79,24 +91,20 @@ export async function getTaskGroupsAction(): Promise<TaskGroup[]> {
         const tasks = tasksSnapshot.docs.map(taskDoc => {
             const taskData = taskDoc.data();
             return {
-                id: taskDoc.id,
-                text: taskData.text,
-                completed: taskData.completed,
-                order: taskData.order,
-                color: taskData.color || undefined,
+                id: taskDoc.id, text: taskData.text, completed: taskData.completed, order: taskData.order, color: taskData.color || undefined,
             } as QuickTask;
         });
 
+        // --- CHANGE 2: Retrieve the new 'icon' property ---
         return {
             id: groupDoc.id,
             title: groupData.title,
+            icon: groupData.icon || undefined, // Add the icon field
             tasks: tasks,
         } as TaskGroup;
       })
     );
-
     return groupsWithTasks;
-
   } catch (error) {
     console.error("Error fetching task groups:", error);
     return [];
