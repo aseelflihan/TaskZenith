@@ -231,45 +231,49 @@ export function QuickActionsModal({ isOpen, onOpenChange }: QuickActionsModalPro
         </div>
       );
     }
+    // List view only returns the scrollable content
     return (
-      <div className="space-y-4 py-4">
+      <div className="flex-grow overflow-y-auto min-h-0 pr-2 pt-4">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={e => setActiveId(e.active.id as string)} onDragEnd={handleDragEnd}>
-          <div className="space-y-4 max-h-[70vh] sm:max-h-[60vh] overflow-y-auto pr-2">
-              {groups.map(group => <SortableGroup key={group.id} group={group} onDeleteGroup={handleDeleteGroup} onAddTask={handleAddTask} taskHandlers={taskHandlers} />)}
+          <div className="space-y-4">
+            {groups.map(group => <SortableGroup key={group.id} group={group} onDeleteGroup={handleDeleteGroup} onAddTask={handleAddTask} taskHandlers={taskHandlers} />)}
             {isAddingGroup && <NewGroupForm onSave={handleAddGroup} onCancel={() => setIsAddingGroup(false)} />}
           </div>
         </DndContext>
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-4 border-t border-slate-800 gap-4">
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Button variant="outline" onClick={() => setIsAddingGroup(true)} disabled={isAddingGroup} className="flex-grow sm:flex-grow-0">
-              <FolderPlus className="mr-2 h-4 w-4" /> Add Group
-            </Button>
-            <Button variant="ghost" onClick={() => setView('ai_input')} className="flex-grow sm:flex-grow-0">
-              <Sparkles className="mr-2 h-4 w-4" /> Add with AI
-            </Button>
-          </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive-outline" className="w-full sm:w-auto">Clear All</Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete ALL groups and tasks. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleClearAll}>Yes, Clear All</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
       </div>
     );
   };
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-4xl min-h-[50vh] sm:w-full">
+      <DialogContent className="w-[95vw] max-w-4xl top-[5vh] bottom-[5vh] translate-y-0 sm:top-1/2 sm:-translate-y-1/2 sm:bottom-auto sm:h-auto sm:min-h-[50vh] sm:w-full pt-12 pb-6 flex flex-col">
         <DialogHeader><DialogTitle>Quick Actions</DialogTitle></DialogHeader>
         {renderContent()}
+        {/* Footer is now outside renderContent and will be fixed at the bottom */}
+        {view === 'list' && !isFetching && (
+          <div className="flex-shrink-0 flex flex-row flex-wrap justify-between items-center pt-4 border-t border-slate-800 gap-2">
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsAddingGroup(true)} disabled={isAddingGroup}>
+                <FolderPlus className="mr-2 h-4 w-4" /> Add Group
+              </Button>
+              <Button variant="ghost" onClick={() => setView('ai_input')}>
+                <Sparkles className="mr-2 h-4 w-4" /> Add with AI
+              </Button>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive-outline">Clear All</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete ALL groups and tasks. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearAll}>Yes, Clear All</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
