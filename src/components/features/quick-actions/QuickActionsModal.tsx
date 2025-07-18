@@ -233,7 +233,7 @@ export function QuickActionsModal({ isOpen, onOpenChange }: QuickActionsModalPro
     }
     // List view only returns the scrollable content
     return (
-      <div className="flex-grow overflow-y-auto min-h-0 pr-2 pt-4">
+      <div className="flex-grow overflow-y-auto min-h-0 pr-2 pt-4 custom-scrollbar">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={e => setActiveId(e.active.id as string)} onDragEnd={handleDragEnd}>
           <div className="space-y-4">
             {groups.map(group => <SortableGroup key={group.id} group={group} onDeleteGroup={handleDeleteGroup} onAddTask={handleAddTask} taskHandlers={taskHandlers} />)}
