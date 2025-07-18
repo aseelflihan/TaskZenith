@@ -246,7 +246,7 @@ export function QuickActionsModal({ isOpen, onOpenChange }: QuickActionsModalPro
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-4xl top-[5vh] bottom-[5vh] translate-y-0 sm:top-1/2 sm:-translate-y-1/2 sm:bottom-auto sm:h-auto sm:min-h-[50vh] sm:w-full pt-12 pb-6 flex flex-col">
+      <DialogContent className="w-[95vw] max-w-4xl top-[5vh] bottom-[5vh] translate-y-0 sm:top-1/2 sm:-translate-y-1/2 sm:bottom-auto sm:h-auto sm:max-h-[80vh] sm:min-h-[50vh] sm:w-full pt-12 pb-6 flex flex-col">
         <DialogHeader><DialogTitle>Quick Actions</DialogTitle></DialogHeader>
         {renderContent()}
         {/* Footer is now outside renderContent and will be fixed at the bottom */}
