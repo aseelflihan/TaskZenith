@@ -55,6 +55,7 @@ export function KnowledgeCard({ item, isSelected, onSelect }: KnowledgeCardProps
             width={400}
             height={200}
             className="object-cover w-full h-32"
+            priority
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
         </CardHeader>

@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 // --------------------------
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://taskzenith.com'),
   title: 'TaskZenith - Turn Chaos into Clarity',
   description: 'The intelligent AI-powered task manager that organizes your workflow, so you can focus on what truly matters. For individuals and teams aiming for peak productivity.',
   openGraph: {
@@ -37,8 +38,11 @@ export const metadata: Metadata = {
     images: ['/og-image.png'],
   },
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
     apple: '/apple-touch-icon.png',
   },
 };
