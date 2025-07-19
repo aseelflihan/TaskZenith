@@ -45,7 +45,7 @@ export function ContentGrid() {
           <Button variant="ghost" size="sm" onClick={clearFilterTags}>Clear all</Button>
         </div>
       )}
-      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto flex-grow">
+      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto flex-grow" style={{ gridAutoRows: '1fr' }}>
         {filteredItems.length > 0 ? (
             filteredItems.map((item) => (
             <KnowledgeCard
