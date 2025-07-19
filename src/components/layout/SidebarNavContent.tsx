@@ -35,6 +35,7 @@ import {
 const menuItems = [
   { href: "/dashboard", label: "Tasks", icon: ListChecks, requiresAuth: true },
   { href: "/reports", label: "Productivity Reports", icon: BarChart3, requiresAuth: true },
+  { href: "/knowledge-hub", label: "Knowledge Hub", icon: Bot, requiresAuth: true },
 ];
 // ----------------------
 

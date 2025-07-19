@@ -1,28 +1,22 @@
-// D:\applications\tasks\2\next.config.ts (النسخة النهائية مع التحميل اليدوي)
-
-// --- التحميل اليدوي لمتغيرات البيئة ---
-import path from 'path';
-require('dotenv').config({ path: path.resolve(process.cwd(), '.env.local') });
-// ------------------------------------
-
-import type { NextConfig } from 'next';
-
-// --- الاختبار النهائي للتأكد من نجاح التحميل اليدوي ---
-console.log("--- FINAL TEST (MANUAL LOAD) --- GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID ? "✅ LOADED" : "❌ NOT LOADED");
-// ----------------------------------------------------
-
-const nextConfig: NextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'placehold.co',
+        hostname: 'img.youtube.com',
+        port: '',
+        pathname: '/vi/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'source.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
         port: '',
         pathname: '/**',
       },

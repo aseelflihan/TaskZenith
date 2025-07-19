@@ -1,8 +1,7 @@
 // D:\applications\tasks\TaskZenith\src\ai\flows\parse-natural-language-tasks.ts
 'use server';
 import { ai } from '@/ai/genkit';
-import { geminiPro } from '@genkit-ai/googleai';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 // Schemas remain the same.
 const SubTaskParsedSchema = z.object({
@@ -84,9 +83,8 @@ const parseNaturalLanguageTasksFlow = ai.defineFlow(
     inputSchema: ParseNaturalLanguageInputSchema,
     outputSchema: MultiTaskOutputSchema,
   },
-  async (input) => {
+  async (input: ParseNaturalLanguageInput) => {
     const { output } = await prompt(input, {
-      model: geminiPro,
       // The temperature is good as is, no need to change it for now.
       config: {
         temperature: 0.4,

@@ -31,5 +31,19 @@ export type TaskFilter = "all" | "active" | "completed";
 export type TimerSessionType = 'work' | 'break';
 
 // ActiveTimerTarget will now always refer to a subtask, as main tasks don't have their own timer.
+
+export interface KnowledgeItem {
+  id: string;
+  title: string;
+  tldr: string;
+  summary: string;
+  thumbnail: string;
+  source: string;
+  tags: string[];
+  tasks: { id: string; text: string; completed: boolean }[];
+  originalContent: string;
+  createdAt: string;
+}
+
 export type ActiveTimerTarget =
   | { type: 'subtask'; data: SubTask; parentTask: Task };

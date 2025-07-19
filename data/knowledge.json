@@ -1,0 +1,36 @@
+[
+  {
+    "id": "2025-07-18T16:39:53.456Z",
+    "summary": "This appears to be a YouTube video in Arabic from the channel \"زوايا مظلمة\" (Dark Corners). Without the ability to understand Arabic, it's impossible to provide a detailed summary of the video's content. However, based on the channel name, it's likely to deal with dark or mysterious themes. Further analysis would require translation of the video's audio and any on-screen text.",
+    "tags": [
+      "Arabic",
+      "Dark Themes",
+      "Mystery",
+      "YouTube",
+      "زوايا مظلمة"
+    ],
+    "tasks": [
+      {
+        "text": "Translate the video's audio and on-screen text from Arabic to English.",
+        "id": "41833486-4860-494a-a95a-59bc57c8daf7",
+        "completed": false
+      },
+      {
+        "text": "Analyze the translated content to identify the main topics and arguments.",
+        "id": "4c88a5ea-f180-4a50-b9b3-d6ce3f451cc8",
+        "completed": false
+      },
+      {
+        "text": "Summarize the video's content in English.",
+        "id": "90fbdd7f-eecd-4d94-aa51-9e9fe2f59da5",
+        "completed": false
+      }
+    ],
+    "title": "زوايا مظلمة YouTube Video Analysis",
+    "tldr": "Arabic YouTube video from \"Dark Corners\" channel, likely dealing with dark or mysterious themes; requires translation for detailed analysis.",
+    "thumbnail": "https://img.youtube.com/vi/jW0cFlhXlm8/hqdefault.jpg",
+    "source": "YouTube",
+    "originalContent": "https://www.youtube.com/watch?v=jW0cFlhXlm8&ab_channel=%D8%B2%D9%88%D8%A7%D9%8A%D8%A7%D9%85%D8%B8%D9%84%D9%85%D8%A9",
+    "createdAt": "2025-07-18T16:39:53.456Z"
+  }
+]
