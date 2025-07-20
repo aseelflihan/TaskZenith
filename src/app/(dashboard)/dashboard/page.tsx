@@ -302,7 +302,10 @@ export default function TasksPage() {
                 }
                 return task;
             });
-            return rescheduleSubsequentSubTasksOnActualTime(tasksStateAfterCompletionAndReschedule, endedSubTask.id, workEndTime);
+            if (endedSubTask.id) {
+              return rescheduleSubsequentSubTasksOnActualTime(tasksStateAfterCompletionAndReschedule, endedSubTask.id, workEndTime);
+            }
+            return tasksStateAfterCompletionAndReschedule;
         });
         const breakDuration = endedSubTask.breakMinutes || 0;
         if (breakDuration > 0) {
@@ -382,6 +385,7 @@ export default function TasksPage() {
             tasks={tasks}
             editingTask={editingTask}
             isFormOpen={isFormOpen}
+            onCreateTaskFromTimeline={handleCreateTaskFromTimeline}
             onFormOpenChange={handleFormOpenChange}
             onOpenEditForm={handleOpenEditForm}
             onOpenNewTaskForm={handleOpenNewTaskForm}

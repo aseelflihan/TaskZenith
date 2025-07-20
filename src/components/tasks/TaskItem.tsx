@@ -10,7 +10,7 @@ import { Edit2, Trash2, PlayCircle, GripVertical, CalendarDays, Clock, AlertTria
 import { SubTaskItem } from "./SubTaskItem";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils.tsx";
+import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict, parseISO, format } from 'date-fns';
 
 interface TaskItemProps {
@@ -162,3 +162,4 @@ export function TaskItem({
     </Card>
   );
 }
+

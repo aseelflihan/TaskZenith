@@ -3,7 +3,8 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { List, Grid } from "lucide-react";
+import { List, Grid, Tags } from "lucide-react";
+import { useKnowledgeHubStore } from "./useKnowledgeHubStore";
 
 interface SearchBarWithFiltersProps {
     view: 'grid' | 'list';
@@ -13,6 +14,8 @@ interface SearchBarWithFiltersProps {
 }
 
 export default function SearchBarWithFilters({ view, setView, searchTerm, setSearchTerm }: SearchBarWithFiltersProps) {
+  const { allTags, filterTags, toggleFilterTag } = useKnowledgeHubStore();
+
   return (
     <div className="flex gap-4 mb-6">
       <Input
@@ -23,12 +26,24 @@ export default function SearchBarWithFilters({ view, setView, searchTerm, setSea
       />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline">Type</Button>
+          <Button variant="outline">
+            <Tags className="mr-2 h-4 w-4" />
+            Tags
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuCheckboxItem checked>Article</DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem>Video</DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem>Idea</DropdownMenuCheckboxItem>
+          {allTags.map(tag => (
+            <DropdownMenuCheckboxItem
+              key={tag}
+              checked={filterTags.includes(tag)}
+              onSelect={(e) => {
+                e.preventDefault();
+                toggleFilterTag(tag);
+              }}
+            >
+              {tag}
+            </DropdownMenuCheckboxItem>
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
       <div className="flex items-center gap-2">

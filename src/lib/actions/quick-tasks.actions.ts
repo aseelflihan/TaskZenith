@@ -3,7 +3,7 @@
 
 import { TaskGroup, QuickTask } from "@/types/quick-task";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { adminDb } from "@/lib/firebase-admin";
 
 export async function saveTaskGroupsAction(groups: TaskGroup[]) {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { MailCheck, AlertTriangle, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { auth } from '@/lib/firebase'; // Firebase client SDK
-import { sendEmailVerification, type AuthError } from "firebase/auth";
+import { sendEmailVerification, type AuthError, type User } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
@@ -19,29 +19,38 @@ export default function VerifyEmailContent() {
   const [displayEmail, setDisplayEmail] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
   const [resendError, setResendError] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    if (!auth) return;
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (email) {
       setDisplayEmail(decodeURIComponent(email));
-    } else {
+    } else if (!user) {
       const timer = setTimeout(() => {
         // router.push('/auth/signin');
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [email, router]);
+  }, [email, user, router]);
 
   const handleResendVerificationEmail = async () => {
-    if (!auth.currentUser) {
+    if (!user) {
       setResendError("You need to be logged in to resend the verification email. Please sign in and try again if your email is not verified.");
       toast({
         title: "Error",
-        description: "No user currently signed in with Firebase client.",
+        description: "No user currently signed in.",
         variant: "destructive",
       });
       return;
     }
-    if (auth.currentUser.emailVerified) {
+    if (user.emailVerified) {
         toast({
             title: "Email Already Verified",
             description: "Your email address is already verified.",
@@ -52,11 +61,10 @@ export default function VerifyEmailContent() {
     setIsResending(true);
     setResendError(null);
     try {
-      await sendEmailVerification(auth.currentUser);
+      await sendEmailVerification(user);
       toast({
         title: "Verification Email Resent",
-        // ----------->  التعديل هنا: تم حذف علامة الاقتباس الزائدة  <-----------
-        description: `A new verification email has been sent to ${auth.currentUser.email}.`,
+        description: `A new verification email has been sent to ${user.email}.`,
       });
     } catch (e) {
       const firebaseError = e as AuthError;
@@ -84,7 +92,7 @@ export default function VerifyEmailContent() {
           <CardDescription>
             We've sent a verification link to{" "}
             <span className="font-semibold text-foreground">
-              {displayEmail || "your email address"}
+              {displayEmail || user?.email || "your email address"}
             </span>.
             Please click the link in that email to activate your account.
           </CardDescription>
@@ -103,7 +111,7 @@ export default function VerifyEmailContent() {
           )}
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <Button onClick={handleResendVerificationEmail} disabled={isResending || !auth.currentUser || auth.currentUser?.emailVerified} className="w-full" variant="outline">
+          <Button onClick={handleResendVerificationEmail} disabled={isResending || !user || user.emailVerified} className="w-full" variant="outline">
             {isResending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

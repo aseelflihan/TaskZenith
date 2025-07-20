@@ -15,7 +15,7 @@ const MagicButton = ({
   children,
   className,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) => {
+}: { children: React.ReactNode, className?: string }) => {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const springConfig = { damping: 15, stiffness: 300 };
@@ -40,7 +40,7 @@ const MagicButton = ({
         "group relative w-full sm:w-auto h-14 px-8 font-semibold bg-transparent text-foreground border border-border/80 rounded-xl transition-shadow duration-300 hover:shadow-2xl hover:shadow-primary/20",
         className
       )}
-      {...props}
+      
     >
       <motion.div
         className="absolute inset-0 rounded-xl"

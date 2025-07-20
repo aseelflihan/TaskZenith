@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { motion, useAnimate, useInView, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { motion, useAnimate, useInView, useMotionValue, useSpring, useTransform, Variants } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, MoveRight } from "lucide-react";
 import clsx from "clsx";
@@ -64,7 +64,7 @@ const MagicButton = ({
   children,
   className,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) => {
+}: { children: React.ReactNode, className?: string }) => {
   const [isHovered, setIsHovered] = useState(false);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -93,7 +93,7 @@ const MagicButton = ({
         isHovered && "shadow-[0_0_20px_var(--shadow-primary)]",
         className
       )}
-      {...props}
+      
     >
       <motion.div
         className="absolute inset-0 rounded-xl"
@@ -158,7 +158,7 @@ export const AuroraBackground = ({
 
 
 export function HeroSection() {
-  const mainContentVariants = {
+  const mainContentVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: { 
       opacity: 1, 
@@ -172,7 +172,7 @@ export function HeroSection() {
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
   };

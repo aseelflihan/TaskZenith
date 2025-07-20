@@ -6,6 +6,7 @@ interface KnowledgeHubState {
   selectedItem: KnowledgeItem | null;
   isLoading: boolean;
   filterTags: string[];
+  allTags: string[];
   setItems: (items: KnowledgeItem[]) => void;
   addItem: (item: KnowledgeItem) => void;
   setSelectedItem: (item: KnowledgeItem | null) => void;
@@ -19,8 +20,16 @@ export const useKnowledgeHubStore = create<KnowledgeHubState>((set) => ({
   selectedItem: null,
   isLoading: true,
   filterTags: [],
-  setItems: (items) => set({ items }),
-  addItem: (item) => set((state) => ({ items: [item, ...state.items] })),
+  allTags: [],
+  setItems: (items) => {
+    const allTags = [...new Set(items.flatMap(item => item.tags))];
+    set({ items, allTags });
+  },
+  addItem: (item) => set((state) => {
+    const newItems = [item, ...state.items];
+    const allTags = [...new Set(newItems.flatMap(i => i.tags))];
+    return { items: newItems, allTags };
+  }),
   setSelectedItem: (item) => set({ selectedItem: item }),
   toggleFilterTag: (tag) =>
     set((state) => {
@@ -34,8 +43,9 @@ export const useKnowledgeHubStore = create<KnowledgeHubState>((set) => ({
     set({ isLoading: true });
     try {
       const response = await fetch('/api/knowledge');
-      const data = await response.json();
-      set({ items: data, isLoading: false });
+      const data: KnowledgeItem[] = await response.json();
+      const allTags = [...new Set(data.flatMap((item) => item.tags))];
+      set({ items: data, allTags, isLoading: false });
     } catch (error) {
       console.error("Failed to fetch knowledge items:", error);
       set({ isLoading: false });

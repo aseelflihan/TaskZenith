@@ -1,9 +1,9 @@
-// D:\applications\tasks\TaskZenith\src/components\landing\FeaturesSection.tsx
+// D:\applications\tasks\TaskZenith\src/components/landing/FeaturesSection.tsx
 
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { CheckCircle, Zap, Users, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,16 +34,17 @@ const features = [
   },
 ];
 
-const featureVariants = {
+const featureVariants: Variants = {
   hidden: { opacity: 0, y: 50 },
-  visible: {
+  visible: (i: number) => ({
     opacity: 1,
     y: 0,
     transition: {
+      delay: i * 0.1,
       duration: 0.6,
       ease: "easeOut",
     },
-  },
+  }),
 };
 
 export function FeaturesSection() {
@@ -81,7 +82,6 @@ export function FeaturesSection() {
               whileInView="visible"
               viewport={{ once: true, amount: 0.3 }}
               custom={index}
-              transition={{ delay: index * 0.1, duration: 0.5 }}
             >
               <div className="mb-4">{feature.icon}</div>
               <h3 className="text-xl font-bold mb-2">{feature.title}</h3>

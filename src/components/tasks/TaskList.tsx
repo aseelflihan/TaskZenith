@@ -133,8 +133,7 @@ export function TaskList({
 
     const matchesPriorityFilter =
       priorityFilter === 'all' ||
-      task.priority === priorityFilter ||
-      (priorityFilter !== 'all' && task.priority === undefined && false);
+      task.priority === priorityFilter;
 
     const matchesSearch =
       searchTerm === "" ||

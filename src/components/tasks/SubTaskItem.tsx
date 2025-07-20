@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Edit2, Trash2, Save, X, PlayCircle, Clock, Coffee, Sun, Moon, CalendarDays, AlertTriangle } from "lucide-react"; 
 import { useState } from "react";
-import { cn } from "@/lib/utils.tsx";
+import { cn } from "@/lib/utils";
 import { parseISO, format, isPast, isValid } from 'date-fns';
 
 interface SubTaskItemProps {
@@ -66,7 +66,9 @@ export function SubTaskItem({ subtask, parentTask, onToggle, onDelete, onUpdate,
 
   const handleUpdate = () => {
     if (editText.trim() === "") return;
-    onUpdate(subtask.id, editText);
+    if (subtask.id) {
+      onUpdate(subtask.id, editText);
+    }
     setIsEditing(false);
   };
 
@@ -75,7 +77,7 @@ export function SubTaskItem({ subtask, parentTask, onToggle, onDelete, onUpdate,
       <Checkbox
         id={`subtask-${subtask.id}`}
         checked={subtask.completed}
-        onCheckedChange={() => onToggle(subtask.id)}
+        onCheckedChange={() => subtask.id && onToggle(subtask.id)}
         aria-label={`Mark subtask ${subtask.text} as ${subtask.completed ? 'incomplete' : 'complete'}`}
         className="self-start sm:self-center mt-1 sm:mt-0"
       />
@@ -134,13 +136,13 @@ export function SubTaskItem({ subtask, parentTask, onToggle, onDelete, onUpdate,
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => onStartTimer(subtask.id)}
+          onClick={() => subtask.id && onStartTimer(subtask.id)}
           aria-label="Start timer for this subtask"
           disabled={subtask.completed || (subtask.durationMinutes !== undefined && subtask.durationMinutes <=0)}
         >
           <PlayCircle className="h-4 w-4 text-primary" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => onDelete(subtask.id)} aria-label="Delete subtask">
+        <Button variant="ghost" size="icon" onClick={() => subtask.id && onDelete(subtask.id)} aria-label="Delete subtask">
           <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
         </Button>
       </div>

@@ -8,7 +8,7 @@ import type { QuickTask } from "@/types/quick-task";
 import type { TaskFormData } from "@/components/tasks/TaskForm";
 import { adminDb } from '@/lib/firebase-admin';
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { addMinutes, format, parse, parseISO, isValid, setHours, setMinutes, startOfDay } from 'date-fns';
 
 const getFlows = async () => {

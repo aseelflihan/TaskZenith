@@ -1,7 +1,7 @@
 "use server";
 
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { addTask } from "@/lib/actions";
 import { TaskFormData } from "@/components/tasks/TaskForm";
 import { KnowledgeItem } from "../types";

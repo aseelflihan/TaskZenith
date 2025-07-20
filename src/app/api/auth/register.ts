@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
-import { sendVerificationEmail } from "@/lib/utils"; // تحتاج لإنشاء هذه الدالة لإرسال البريد
+import { sendVerificationEmail } from "@/lib/email";
 
 // قاعدة بيانات وهمية (استبدلها بقاعدة بياناتك الفعلية)
 const users: any[] = [];

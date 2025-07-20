@@ -24,6 +24,15 @@ export interface Task {
 export type TaskFilter = 'all' | 'active' | 'completed';
 export type TimerSessionType = 'work' | 'break';
 
+export type TaskPriority = 'high' | 'medium' | 'low';
+
+export interface EnrichedSubTask extends SubTask {
+  parentTaskText: string;
+  parentTaskId: string;
+  priority: TaskPriority;
+  hasConflict?: boolean;
+}
+
 export interface KnowledgeItem {
   id: string;
   title: string;

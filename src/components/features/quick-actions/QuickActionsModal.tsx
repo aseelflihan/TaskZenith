@@ -262,7 +262,7 @@ export function QuickActionsModal({ isOpen, onOpenChange }: QuickActionsModalPro
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive-outline">Clear All</Button>
+                <Button variant="destructive">Clear All</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete ALL groups and tasks. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>

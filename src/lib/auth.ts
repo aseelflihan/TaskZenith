@@ -2,13 +2,21 @@
 import { type NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { adminAuth } from '@/lib/firebase-admin';
+
+// Ensure environment variables are set, providing a clear error message if not.
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const nextAuthSecret = process.env.NEXTAUTH_SECRET;
+
+if (!googleClientId || !googleClientSecret || !nextAuthSecret) {
+  throw new Error('Missing GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, or NEXTAUTH_SECRET environment variables');
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
     }),
     CredentialsProvider({
       id: 'credentials',
@@ -18,45 +26,40 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.idToken) return null;
-        try {
-          const decodedToken = await adminAuth.verifyIdToken(credentials.idToken);
-          if (!decodedToken?.uid) return null;
+        
+        // Use the new API route for verification
+        const res = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/verify-token`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ idToken: credentials.idToken }),
+        });
 
-          const userRecord = await adminAuth.getUser(decodedToken.uid);
-          return {
-            id: userRecord.uid,
-            name: userRecord.displayName,
-            email: userRecord.email,
-            image: userRecord.photoURL,
-          };
-        } catch (error) {
-          console.error('Firebase ID Token validation error:', error);
+        if (!res.ok) {
+          console.error('API verification failed:', await res.text());
           return null;
         }
+
+        const user = await res.json();
+        return user;
       },
     }),
   ],
   session: { strategy: 'jwt' },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: nextAuthSecret,
   pages: { signIn: '/auth/signin' },
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === 'google' && user.email) {
-        try {
-          await adminAuth.getUserByEmail(user.email);
-        } catch (error: any) {
-          if (error.code === 'auth/user-not-found') {
-            await adminAuth.createUser({
-              uid: user.id,
-              email: user.email,
-              displayName: user.name,
-              photoURL: user.image,
-              emailVerified: true,
-            });
-          } else {
-            console.error('SignIn Error:', error);
+        const res = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/handle-signin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user }),
+        });
+        if (!res.ok) {
+            console.error('SignIn handling failed:', await res.text());
             return false;
-          }
         }
       }
       return true;
@@ -64,11 +67,16 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       if (user) token.id = user.id;
       if (account?.provider === 'google' && user.email) {
-        try {
-          const firebaseUser = await adminAuth.getUserByEmail(user.email);
-          token.id = firebaseUser.uid;
-        } catch (error) {
-          console.error('Error fetching firebase user in JWT callback:', error);
+        const res = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/get-jwt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: user.email }),
+        });
+        if (res.ok) {
+            const data = await res.json();
+            token.id = data.id;
+        } else {
+            console.error('JWT handling failed:', await res.text());
         }
       }
       return token;

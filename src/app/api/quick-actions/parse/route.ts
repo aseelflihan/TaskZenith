@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // --- CHANGE 1: Corrected way to get session in API Routes ---
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // This import is correct because authOptions is exported
+import { authOptions } from "@/lib/auth"; // This import is correct because authOptions is exported
 
 import { parseNaturalLanguageTasks } from "@/ai/flows/parse-natural-language-tasks";
 

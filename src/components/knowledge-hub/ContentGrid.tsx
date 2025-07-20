@@ -1,23 +1,37 @@
 "use client";
+"use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { KnowledgeCard } from "./KnowledgeCard";
 import { KnowledgeCardSkeleton } from "./KnowledgeCardSkeleton";
 import { useKnowledgeHubStore } from "./useKnowledgeHubStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { X } from "lucide-react";
+import SearchBarWithFilters from "./SearchBarWithFilters";
 
 export function ContentGrid() {
   const { items, isLoading, selectedItem, setSelectedItem, fetchItems, filterTags, toggleFilterTag, clearFilterTags } = useKnowledgeHubStore();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [view, setView] = useState<'grid' | 'list'>('grid');
+
 
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
 
-  const filteredItems = filterTags.length > 0
-    ? items.filter(item => filterTags.every(tag => item.tags.includes(tag)))
-    : items;
+  const filteredItems = items.filter(item => {
+    const matchesSearchTerm =
+      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.tldr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesTags =
+      filterTags.length === 0 ||
+      filterTags.some(filterTag => item.tags.includes(filterTag));
+
+    return matchesSearchTerm && matchesTags;
+  });
 
   if (isLoading) {
     return (
@@ -30,9 +44,15 @@ export function ContentGrid() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col p-4">
+      <SearchBarWithFilters
+        view={view}
+        setView={setView}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+      />
       {filterTags.length > 0 && (
-        <div className="p-4 border-b flex items-center gap-2 flex-wrap">
+        <div className="pb-4 border-b flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground">Filtering by:</span>
           {filterTags.map(tag => (
             <Badge key={tag} variant="default">
@@ -45,7 +65,7 @@ export function ContentGrid() {
           <Button variant="ghost" size="sm" onClick={clearFilterTags}>Clear all</Button>
         </div>
       )}
-      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto flex-grow" style={{ gridAutoRows: '1fr' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto flex-grow pt-4" style={{ gridAutoRows: '1fr' }}>
         {filteredItems.length > 0 ? (
             filteredItems.map((item) => (
             <KnowledgeCard

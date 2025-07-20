@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,7 @@ const pricingPlans = [
 export function PricingSection() {
   const [isYearly, setIsYearly] = useState(false);
 
-  const cardVariants = {
+  const cardVariants: Variants = {
     hidden: { opacity: 0, y: 50 },
     visible: (i: number) => ({
       opacity: 1,
