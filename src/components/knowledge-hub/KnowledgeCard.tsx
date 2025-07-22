@@ -1,6 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { KnowledgeItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -49,21 +50,26 @@ export function KnowledgeCard({ item, isSelected, onSelect }: KnowledgeCardProps
       
       <div className="flex flex-col flex-grow">
         <CardHeader className="p-0 relative">
-          <Image
-            src={item.thumbnail || "https://source.unsplash.com/400x200/?abstract,pattern"}
-            alt={item.title}
-            width={400}
-            height={200}
-            className="object-cover w-full h-32"
-            priority
-          />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Image
+                  src={item.thumbnail || "https://source.unsplash.com/400x200/?abstract,pattern"}
+                  alt={item.title}
+                  width={400}
+                  height={200}
+                  className="object-cover w-full h-32"
+                  priority
+                />
+              </TooltipTrigger>
+              {item.attribution && (
+                <TooltipContent>
+                  <p dangerouslySetInnerHTML={{ __html: item.attribution }} />
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-          {item.attribution && (
-            <div
-              className="absolute bottom-2 left-2 text-xs text-white/80"
-              dangerouslySetInnerHTML={{ __html: item.attribution }}
-            />
-          )}
         </CardHeader>
 
         <CardContent className="p-4 flex-grow">

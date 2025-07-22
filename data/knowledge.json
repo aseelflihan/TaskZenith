@@ -339,5 +339,56 @@
     "originalContent": "- أن يكون الشرح منطقيًا، حياديًا، وغير مرتبط بموضوع معيّن لأنني لم أحدد بعد اتجاه بحثي الدقيق.\n- أن تكون الاقتراحات قابلة للتطبيق في سياق إعداد رسالة ماجستير في Informatika.\n\nالفجوات البحثية في النقطة\nتحديد المواضيع التي لم تُدرس بشكل كافٍ أو لم تُغطَّى بعمق في المصادر الحالية، مع التركيز على الجوانب التي تفتقر إلى التحليل أو التطبيق العملي.\n\nالإشارة إلى التحديات التقنية الموجودة والتي لا تزال قائمة، ولكن مع التركيز فقط على تلك التي يمكن التعامل معها بسهولة أو تتطلب حلولاً بسيطة.\n\nرصد نقص في النماذج أو البيانات أو دراسات الحالة المتعلقة بالنقطة، مع التركيز على الجوانب التي يمكن العمل عليها دون الحاجة إلى موارد معقدة أو متقدمة.\n\nالتأكيد على أهمية اختيار فجوات بحثية قابلة للتطبيق في سياق رسالة ماجستير في مجال Informatika، بحيث تكون مجالات الدراسة عملية وقابلة للتحقيق ضمن الوقت والموارد المتاحة.\n\nعناوين مقترحة للبحث\nاقتراح عناوين بحثية واضحة ومباشرة تركز على معالجة الفجوات المعرفية المحددة.\n\nتصنيف العناوين حسب مستوى الصعوبة:\n\nسهل: عناوين لا تتطلب تقنيات أو موارد معقدة، مناسبة للمشاريع التي يمكن إنجازها في إطار رسالة ماجستير.\n\nمتوسط: عناوين تحتاج لبعض الجهد التقني أو البحثي، لكنها لا تتضمن تحديات كبيرة.\n\nاستبعاد أي عناوين تحتوي على صعوبات تقنية أو بحثية كبيرة، مع توضيح ذلك بوضوح.\n\n\n تحديد الفجوات المعرفية أو الجوانب غير المُغطاة جيدًا في المصادر المتعلقة بهذه النقطة، مثل:\n   - مواضيع لم يتم دراستها كفاية\n   - تحديات تقنية ما زالت قائمة\n   - عناوين ممتازة وقابلة للتنفيذ وجديدة\n",
     "createdAt": "2025-07-22T16:17:40.139Z",
     "userEmail": "aseeltest2@gmail.com"
+  },
+  {
+    "id": "2025-07-22T16:27:08.257Z",
+    "summary": "The user wants to create short Indonesian dialogues for language learning, incorporating specific keywords naturally into the conversations. The dialogues should be simple, suitable for beginners, and focus on practical usage rather than grammar explanations. The user specifies that the conversations should cover topics related to information technology, scientific research, master's studies, and general interesting facts, while focusing on one topic per dialogue. They request dialogues to be in Indonesian only and include speaker labels ('Speaker 1:' and 'Speaker 2:'). Also, a description of the tone of the conversation should be provided before each dialogue.",
+    "tags": [
+      "Indonesian language",
+      "dialogues",
+      "language learning",
+      "IT",
+      "master's studies"
+    ],
+    "tasks": [
+      {
+        "text": "Create short Indonesian dialogues incorporating user-provided keywords naturally.",
+        "id": "7366c415-839d-4e35-8e42-130dc0cd5e53",
+        "completed": false
+      },
+      {
+        "text": "Ensure dialogues are simple and suitable for beginners.",
+        "id": "1aae9ed1-0500-4c3d-8d02-1bb311018ee8",
+        "completed": false
+      },
+      {
+        "text": "Focus on practical usage rather than grammar explanations.",
+        "id": "ef5a3426-e607-4192-afe8-f1ea25b1dfd8",
+        "completed": false
+      },
+      {
+        "text": "Cover topics related to information technology, scientific research, master's studies, and interesting facts, one topic per dialogue.",
+        "id": "a7c23414-421c-4c33-bc92-3f59a5ea4ea5",
+        "completed": false
+      },
+      {
+        "text": "Write dialogues in Indonesian only.",
+        "id": "86c1d4d5-1188-4ab5-ac6e-ee3b9ac8b1ee",
+        "completed": false
+      },
+      {
+        "text": "Include speaker labels ('Speaker 1:' and 'Speaker 2:') and a description of the conversation's tone.",
+        "id": "be534b23-5e45-4689-bbcc-1914d2898c35",
+        "completed": false
+      }
+    ],
+    "title": "Permintaan Pembuatan Dialog Bahasa Indonesia",
+    "tldr": "The user requests short, beginner-friendly Indonesian dialogues incorporating specific keywords related to IT and master's studies, focusing on practical usage and conversational tone description.",
+    "thumbnail": "https://images.unsplash.com/photo-1555690299-b26cd42e3d80?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3ODE2ODN8MHwxfHNlYXJjaHwxfHxJbmRvbmVzaWFuJTIwbGFuZ3VhZ2V8ZW58MHx8fHwxNzUzMjAxNjM0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    "attribution": "Photo by <a href=\"https://unsplash.com/@hobiindustri\" target=\"_blank\" rel=\"noopener noreferrer\">Hobi industri</a> on <a href=\"https://unsplash.com\" target=\"_blank\" rel=\"noopener noreferrer\">Unsplash</a>",
+    "source": "Web",
+    "originalContent": "أرغب في إنشاء حوارات قصيرة (دايلوجات) لتعلم اللغة الإندونيسية. أرجو منك استخدام الكلمات التي سأذكرها لاحقًا داخل هذه الحوارات بطريقة طبيعية ومناسبة، بحيث تكون هذه الكلمات جزءًا من الحوارات وليست مجرد ترجمة أو قائمة.\n\nإذا كانت الكلمات لا تناسب جميعها في حوار واحد، يمكنك تقسيمها إلى عدة حوارات (مثلاً 2 إلى 3 حوارات كحد أقصى)، وكل حوار يدور حول موضوع أو قصة بسيطة محددة (له علاقة مواضيع علمية او دراسية في تقنية المعلومات , او مواضيع بداخل الاوراق العلمية والبحثية  , او مواضيع برسائل ماجستير ومصطلحات مهمة مفيدة , او اشياء تفيدني في دراستي في الماجستير في تقنية المعلومات ,  , او معلومات مفيدة ومشوقة وتقنيات حديثة , اختر ماهو مناسب حسب الكلمات والصياغ والحوار وليس دمج كلهم في الحوار فقط موضوع واحد مركز ومفيد ومشوق ومعلومات قيمة ... إلخ).\n\nاستخدم كلمات إضافية مناسبة تساعد في بناء الحوار بشكل طبيعي ومفهوم، ولكن احرص أن تبقى الحوارات بسيطة ومناسبة للمبتدئين.\n\nاكتب الحوارات باللغة الإندونيسية فقط، دون ترجمة.\n\nلا تشرح القواعد النحوية، فقط ركز على بناء حوارات مفيدة وسهلة.\n\nقم بتسمية متحدثين قبل الحديث بالطريقة هذا (الزامي بنفس الكلمات بدون ترجمتها)\nSpeaker 1: \nSpeaker 2:\n\n\nقبل بدء الحوار قم بوصف طبييعة النبرات والحوار بجملة مساعدة لشرح طبيعة الحوار والدايلوج هذا\nلوصف الصوت ونبرة الحديث مثال:\n\nRead aloud in a warm, welcoming tone\n\n\nقم بوضع عنوان لهذا الحوار بالاندونسية بالاعلى\n\n\nالكلمات التي أريد استخدامها في الحوارات هي:\n",
+    "createdAt": "2025-07-22T16:27:08.257Z",
+    "userEmail": "aseeltest2@gmail.com"
   }
 ]
