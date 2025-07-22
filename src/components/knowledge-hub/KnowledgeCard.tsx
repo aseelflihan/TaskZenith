@@ -58,6 +58,12 @@ export function KnowledgeCard({ item, isSelected, onSelect }: KnowledgeCardProps
             priority
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+          {item.attribution && (
+            <div
+              className="absolute bottom-2 left-2 text-xs text-white/80"
+              dangerouslySetInnerHTML={{ __html: item.attribution }}
+            />
+          )}
         </CardHeader>
 
         <CardContent className="p-4 flex-grow">

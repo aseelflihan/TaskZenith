@@ -31,7 +31,8 @@
     "thumbnail": "https://img.youtube.com/vi/jW0cFlhXlm8/hqdefault.jpg",
     "source": "YouTube",
     "originalContent": "https://www.youtube.com/watch?v=jW0cFlhXlm8&ab_channel=%D8%B2%D9%88%D8%A7%D9%8A%D8%A7%D9%85%D8%B8%D9%84%D9%85%D8%A9",
-    "createdAt": "2025-07-18T16:39:53.456Z"
+    "createdAt": "2025-07-18T16:39:53.456Z",
+    "userEmail": "unassigned@taskzenith.com"
   },
   {
     "id": "2025-07-20T15:34:07.978Z",
@@ -76,6 +77,267 @@
     "thumbnail": "https://images.unsplash.com/photo-1634715841611-67741dc71459?q=80&w=831&auto=format&fit=crop",
     "source": "Web",
     "originalContent": "\n\n\n💻 نظام Windows 11 حقيقي (أساسي) — عليه البرنامج المستهدف الذي يطلب \"سيريال تفعيل\".\n\n🐧 نظام Kali Linux يعمل كجهاز افتراضي (VirtualBox) — ستستخدمه لتحليل البرنامج واستكشاف آلية توليد السيريالات.\n\n🎯 الهدف النهائي:\nفهم آلية توليد السيريال للبرنامج الموجود على Windows 11 عبر أدوات التحليل في Kali Linux، واكتشاف أي ثغرة منطقية أو حسابية تؤدي إلى تطوير أداة تولد سيريالات فعالة.\n\n⚠️ شروط التنفيذ:\n✅ ليس لديك صلاحيات برمجية داخل البرنامج (يعني لا تملك الكود المصدري).\n\n✅ تملك صلاحية تنفيذ الأدوات اللازمة على Windows ونسخ ملف البرنامج إلى Kali.\n\n✅ يُطلب منك أن تسير العملية خطوة بخطوة، وتنتظر تأكيدي أنا (المستخدم) قبل الانتقال للخطوة التالية.\n\n🧠 البرومبت النهائي (كامل ومصاغ بدقة):\nقم بدور خبير أمن معلومات وتحليل عكسي (Reverse Engineering) محترف، واعمل على تحليل برنامج يعمل على نظام Windows 11 (غير وهمي)، بينما تستخدم أدوات التحليل داخل Kali Linux (الذي يعمل ضمن VirtualBox).\n\n🎯 الهدف الأساسي:\n\nفهم آلية التحقق من \"سيريال التفعيل\" الخاص بالبرنامج.\n\nاستكشاف أي ضعف منطقي أو ثغرة في الخوارزمية.\n\nثم بناء أداة تقوم بتوليد سيريالات صحيحة بناءً على هذا التحليل.\n\n🛠️ التحليل سيتم بالكامل من داخل Kali Linux، مع الالتزام بما يلي:\n\nجميع خطوات التحليل تكون عبر Kali (ghidra، radare2، gdb، إلخ).\n\nيجب أن توضح الأدوات المناسبة في كل مرحلة.\n\nيجب أن يتم شرح كل خطوة قبل تنفيذها، وتنتظر مني التأكيد قبل الانتقال للخطوة التالية.\n\n✅ الأدوات التي يمكن استخدامها تتضمن (حسب الحاجة):\n\nfile, strings, xxd لتحليل مبدئي.\n\nghidra أو radare2 لتحليل الخوارزميات الداخلية.\n\nltrace, strace, gdb للتنفيذ الحي والمراقبة.\n\nأدوات أخرى مثل cutter, objdump, إلخ.\n\n📦 بداية التحليل:\n\nالبرنامج التنفيذي موجود على Windows باسم program.exe.\n\nتم نسخه إلى Kali Linux ويقع في المسار ~/Desktop/program.exe.\n\n⏳ أول خطوة الآن:\nأريد منك أن تبدأ بتحليل مبدئي عبر الأمر التالي داخل Kali لتحديد نوع الملف:\n\nbash\nCopy\nEdit\nfile ~/Desktop/program.exe\nثم بعده:\n\nbash\nCopy\nEdit\nstrings ~/Desktop/program.exe | less\n📩 انتظر ردي بعد هذه الخطوة فقط. لا تُكمل باقي الخطوات حتى أوافق.\n\nهل ترغب أن أبدأ بالخطوة الأولى الآن؟\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n🎯 الهدف النهائي (Ultimate Objective)\n🧩 الفرضية الأساسية:\nيوجد برنامج يعمل على نظام Windows 11، يتطلب إدخال \"سيريال تفعيل\" (Serial Key) لكي يعمل بشكل كامل. لا تملك الكود المصدري للبرنامج، ولا تملك أي صلاحية إدارية عليه من الداخل. البرنامج يقوم بتوليد/التحقق من السيريالات بطريقة ما داخليًا.\n\n🎯 الهدف الفني:\nاكتشاف ثغرة في طريقة عمل نظام التحقق من السيريال، تسمح لك بفهم خوارزمية التحقق أو توليد السيريالات، ومن ثم بناء أداة (Keygen) قادرة على إنشاء سيريالات صالحة تعمل على البرنامج الأصلي.\n\n🔬 خطوات التحليل المرتقبة (نظريًا):\n1. تحليل ملف البرنامج program.exe:\nمعرفة نوعه (PE32/PE64، compiler).\n\nتحديد إذا ما كان مضغوطًا بـ packer أو مشفرًا.\n\nاستخراج النصوص (strings) بحثًا عن مؤشرات متعلقة بالسيريال (مثل: “Invalid serial”, “Enter key”).\n\n2. تحليل ديناميكي (Dynamic Analysis):\nتشغيل البرنامج داخل بيئة Windows خاضعة للمراقبة (مثل Process Monitor، API Monitor).\n\nمراقبة سلوك البرنامج عند إدخال سيريال خاطئ/صحيح (إن وجد).\n\nاستخراج أي خيوط منطقية أو دوال ترتبط بمقارنة أو معالجة السيريال.\n\n3. التحليل الثابت (Static Analysis):\nفتح البرنامج داخل أدوات تفكيك مثل Ghidra أو Radare2.\n\nالبحث عن:\n\nدوال تحقق من صحة السيريال (مثل strcmp, memcmp, CheckSerial, إلخ).\n\nعمليات تحويل مشبوهة (hashing, XOR, تشفير مخصص).\n\nعلاقات بين المدخلات (الاسم - السيريال؟).\n\n4. فهم آلية التحقق من السيريال:\nاستنتاج ما إذا كانت:\n\nتعتمد على خوارزمية ثابتة (Fixed Key Validation).\n\nمرتبطة باسم المستخدم (Name-based Keygen).\n\nتستخدم توقيع رقمي (Public/Private RSA check — صعب الكسر).\n\nمجرد رقم تسلسلي مع checksum.\n\n5. بناء أداة توليد السيريالات (Keygen):\nبعد فهم الخوارزمية أو الثغرة، يتم بناء برنامج بلغة مثل Python أو C++ يقوم بـ:\n\nأخذ مدخلات مطلوبة (إن وجدت).\n\nإنتاج سيريال صحيح 100% بنفس منطق البرنامج الأصلي.\n\nاختبار الأداة مع عدة سيريالات.\n\n🚨 ملاحظة أمنية هامة:\nالغرض من هذا العمل هو تحليل أمني قانوني داخل بيئة اختبارية تملكها بالكامل، والهدف منه هو:\n\nفحص قابلية النظام للاختراق عبر الهندسة العكسية.\n\nاكتشاف عيوب تصميمية في آلية التحقق.\n\nاقتراح طريقة \"تصليح الثغرة\" لاحقًا (مثل استبدال التحقق المحلي بتوقيع رقمي عبر خادم).\n\n🧠 مخرجات التحليل النهائية:\nرسم تدفقي للخوارزمية المستعملة للتحقق من السيريال.\n\nأداة تعمل فعليًا لتوليد سيريالات صالحة.\n\nتقرير نهائي يوضح:\n\nموقع الثغرة.\n\nكيفية استغلالها.\n\nالتوصية لتصحيحها (patch/fix).\n\n\n\n\n🔐 الهدف الرئيسي:\nتحليل البرنامج لفهم آلية إنشاء أو التحقق من السيريالات، واكتشاف ثغرة منطقية أو حسابية (مثل ضعف في خوارزمية التحقق، تجاهل جزء من السيريال، استخدام hash قابل للعكس، إلخ) يمكن استغلالها لبناء أداة تولّد سيريالات صحيحة.\n\n🧰 ثم لاحقًا، سنستخدم هذا التحليل لمساعدتك في تصحيح الخلل (Patch/Fix) ومنع التزوير مستقبلًا.",
-    "createdAt": "2025-07-20T15:34:07.979Z"
+    "createdAt": "2025-07-20T15:34:07.979Z",
+    "userEmail": "unassigned@taskzenith.com"
+  },
+  {
+    "id": "2025-07-22T15:59:33.024Z",
+    "summary": "The content outlines the mandatory and elective courses for a graduate program, likely in Computer Science or a related field. The mandatory courses (Wajib - W) cover research methodologies, big data technologies, artificial intelligence algorithms, computational algorithms, orientation, thesis proposal and results seminars, thesis writing and defense, scientific article writing, and research progress seminars. The elective courses (Pilihan - P) offer a diverse range of specializations including wireless and mobile networks, biomedical informatics, machine learning, Internet of Things, deep learning, parallel and distributed systems, advanced computer vision, big data analytics, advanced software engineering, multimedia signal processing, ubiquitous computing, data mining applications, internet engineering, information and network security, smart city software systems, cloud computing, advanced web engineering, telemedicine technology, natural language processing, and advanced AI and robotics.",
+    "tags": [
+      "Computer Science",
+      "Curriculum",
+      "Graduate Studies",
+      "Artificial Intelligence",
+      "Data Science"
+    ],
+    "tasks": [
+      {
+        "text": "Identify the specific requirements for each mandatory course.",
+        "id": "50f6726f-5d2b-4381-b690-17f392de4120",
+        "completed": false
+      },
+      {
+        "text": "Research the prerequisites for each elective course.",
+        "id": "dbd1b122-791e-42b6-b801-ce1b1966467b",
+        "completed": false
+      },
+      {
+        "text": "Compare the course descriptions with similar programs at other universities.",
+        "id": "c4cd10e0-64f4-48a0-ae5d-716404b6c099",
+        "completed": false
+      },
+      {
+        "text": "Determine the credit hours assigned to each course.",
+        "id": "a224b2c3-7350-4829-97a2-f44b2ffe55e6",
+        "completed": false
+      },
+      {
+        "text": "Investigate the faculty members teaching each course.",
+        "id": "3ea9a010-3fd2-4927-b281-9af4381949ae",
+        "completed": false
+      }
+    ],
+    "title": "Graduate Course Curriculum: Mandatory and Elective Courses",
+    "tldr": "This document lists the mandatory and elective courses for a graduate program, covering areas like AI, data science, and software engineering.",
+    "thumbnail": "https://images.unsplash.com/photo-1610563166150-b34df4f3bcd6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3ODE2ODN8MHwxfHNlYXJjaHwxfHxDb21wdXRlciUyMFNjaWVuY2V8ZW58MHx8fHwxNzUzMTk5OTc5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    "attribution": "Photo by <a href=\"https://unsplash.com/@radowanrehan\" target=\"_blank\" rel=\"noopener noreferrer\">Radowan Nakif Rehan</a> on <a href=\"https://unsplash.com\" target=\"_blank\" rel=\"noopener noreferrer\">Unsplash</a>",
+    "source": "Web",
+    "originalContent": "المقررات الإلزامية (Wajib - W)\nW - Metode dan Etika Penelitian (منهجية وأخلاقيات البحث)\nW - Teknologi Big Data (تقنية البيانات الضخمة)\nW - Algoritma Kecerdasan Buatan (خوارزميات الذكاء الاصطناعي)\nW - Algoritma Komputasi (الخوارزميات الحاسوبية)\nW - Orientasi (توجيه)\nW - Seminar Proposal Penelitian Tesis (ندوة مقترح رسالة الماجستير)\nW - Seminar Hasil Penelitian Tesis (ندوة نتائج بحث الرسالة)\nW - Tesis dan Ujian Tesis (الرسالة وامتحان الرسالة)\nW - Artikel Ilmiah (المقالة العلمية) - (بمختلف أشكالها: I, II, under review)\nW - Seminar Kemajuan I, II, III (ندوة تقدم البحث) - (خاصة بمسار البحث/Riset)\nالمقررات الاختيارية (Pilihan - P)\nP - Jaringan Nirkabel dan Bergerak (الشبكات اللاسلكية والمتنقلة)\nP - Informatika Biomedik (المعلوماتية الطبية الحيوية)\nP - Pembelajaran Mesin (تعلم الآلة)\nP - Internet of Things (إنترنت الأشياء)\nP - Deep Learning (التعلم العميق)\nP - Sistem Parallel dan Terdistribusi (الأنظمة المتوازية والموزعة)\nP - Visi Komputer Lanjut (الرؤية الحاسوبية المتقدمة)\nP - Analisis Big Data (تحليل البيانات الضخمة)\nP - Rekayasa Perangkat Lunak Lanjut (هندسة البرمجيات المتقدمة)\nP - Pengolahan Isyarat Multimedia (معالجة إشارات الوسائط المتعددة)\nP - Ubiquitous Computing (الحوسبة المنتشرة)\nP - Aplikasi Data Mining (تطبيقات تنقيب البيانات)\nP - Rekayasa Internet (هندسة الإنترنت)\nP - Keamanan Informasi dan Jaringan (أمن المعلومات والشبكات)\nP - Sistem Perangkat Lunak Smart City (أنظمة برمجيات المدن الذكية)\nP - Komputasi Awan (الحوسبة السحابية)\nP - Rekayasa Web Lanjut (هندسة الويب المتقدمة)\nP - Teknologi Telemedicine (تقنية التطبيب عن بعد)\nP - Pemrosesan Bahasa Alami (معالجة اللغات الطبيعية)\nP - Kecerdasan Buatan dan Robotika Lanjut (الذكاء الاصطناعي والروبوتات المتقدمة)\n",
+    "createdAt": "2025-07-22T15:59:33.024Z",
+    "userEmail": "unassigned@taskzenith.com"
+  },
+  {
+    "id": "2025-07-22T16:00:52.770Z",
+    "summary": "This document outlines several improvements and new features for a software project. It includes fixing an exit button, implementing a toggle sidebar for better content display, adding sections for urgent and positive items with visual cues (red and green), addressing API key limitations, enabling task exporting to other applications, and automatically sorting links for task management with deadlines and details.",
+    "tags": [
+      "UI/UX",
+      "Task Management",
+      "API",
+      "Feature Enhancement",
+      "Software Development"
+    ],
+    "tasks": [
+      {
+        "text": "Fix the exit button.",
+        "id": "f2b76e62-27a7-4bed-a7bb-d9b2abb0754f",
+        "completed": false
+      },
+      {
+        "text": "Implement a toggle sidebar/collapse panel to provide more space for important content and improve user experience.",
+        "id": "9bb51db5-d7b5-4f16-bb70-986f679aa0bd",
+        "completed": false
+      },
+      {
+        "text": "Add a section for urgent requests/tasks with a deadline and highlight it in red.",
+        "id": "eb633907-2654-4749-bcbd-def38b63fcce",
+        "completed": false
+      },
+      {
+        "text": "Add a section for positive things/occasions and highlight it in green.",
+        "id": "9e1469e5-fcd3-4167-8956-d17401b697f8",
+        "completed": false
+      },
+      {
+        "text": "Upload the project.",
+        "id": "87da70ce-ec16-46fb-8434-e3625c9cc743",
+        "completed": false
+      },
+      {
+        "text": "Solve the limited API key issue; find an open method.",
+        "id": "a29c6aaf-7b00-4cdd-b2e2-b04e7403660f",
+        "completed": false
+      },
+      {
+        "text": "Create a feature to send necessary tasks/duties to another task application for execution.",
+        "id": "3062a5f0-a024-4a42-8857-f595eab80fdc",
+        "completed": false
+      },
+      {
+        "text": "Sort any links and convert them to another task application, specifying a deadline, link information, and other details.",
+        "id": "00005966-a7f3-4d8e-b5e3-6ee502859dcf",
+        "completed": false
+      }
+    ],
+    "title": "Software Project Improvements and New Features",
+    "tldr": "This project aims to improve UI/UX, enhance task management, resolve API limitations, and add features for task exporting and link sorting.",
+    "thumbnail": "https://images.unsplash.com/photo-1541462608143-67571c6738dd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3ODE2ODN8MHwxfHNlYXJjaHwxfHxVSSUyRlVYfGVufDB8fHx8MTc1MzIwMDA1OXww&ixlib=rb-4.1.0&q=80&w=1080",
+    "attribution": "Photo by <a href=\"https://unsplash.com/@uxstore\" target=\"_blank\" rel=\"noopener noreferrer\">UX Store</a> on <a href=\"https://unsplash.com\" target=\"_blank\" rel=\"noopener noreferrer\">Unsplash</a>",
+    "source": "Web",
+    "originalContent": "\n- اصلاح زر الخروج\n\n- عمل (Toggle Sidebar / Collapse Panel) لتوفير مساحة إضافية للمحتوى المهم  وتحسين تجربة المستخدم\n\nتساعد في جعل الواجهة أكثر مرونة واستجابة لحاجة المستخدم.\n\n- اضافة قسم الطلبات او الواجبات او الاشياء الضرورية والعاجلة  وديد لاين وتميزه باللون الاحمر\n\n- اضافة قسم الاشياء الايجابية او مناسبات او الاكراميات او غيره وتميزه باللون الاخضر\n\n\n-  رفع المشروع \n\n- حل مشكلة الapi key  محدود اريد طريقة مفتوحة\n\n- عمل خاصية لارسال المهام الضرورية او الواجبات الى تطبيق اخر للمهام لتنفيذها \n\n\n- فرز اي روابط وتحويلها الى تطبيق اخر للمهام  مع تحديد ديد لاين ومعلومات الرابط واي تفاصيل اخرى\n\n",
+    "createdAt": "2025-07-22T16:00:52.770Z",
+    "userEmail": "unassigned@taskzenith.com"
+  },
+  {
+    "id": "2025-07-22T16:16:33.107Z",
+    "summary": "This document provides guidance on how to effectively analyze research papers related to deep learning applications in landslide analysis and environmental monitoring using remote sensing and geo-environmental data. It highlights specific sections within papers that are crucial for understanding the problem's background, deep learning frameworks, practical applications, challenges, and opportunities. It also pinpoints sections that reveal research gaps, limitations, and potential future research directions, specifically regarding the use of AI/ML in environmental monitoring. By focusing on these key areas, researchers can efficiently extract valuable insights and identify promising areas for further investigation, allowing them to develop innovative and impactful research proposals.",
+    "tags": [
+      "deep learning",
+      "landslides",
+      "remote sensing",
+      "geo-environmental data",
+      "environmental monitoring"
+    ],
+    "tasks": [
+      {
+        "text": "Read the Introduction section to understand the background and objectives of using deep learning for landslide analysis.",
+        "id": "114a76bf-22e0-4e94-8918-01a84c40163c",
+        "completed": false
+      },
+      {
+        "text": "Review the Overview of Deep Learning Frameworks, focusing on classification, detection, segmentation, sequence, and hybrid frameworks to identify suitable approaches for geospatial data analysis.",
+        "id": "ef5f818d-e5f9-4b91-b390-82505508c645",
+        "completed": false
+      },
+      {
+        "text": "Study the Deep Learning Frameworks Application for Landslides, particularly sections on Landslide Detection, Mapping, Susceptibility Mapping, and Displacement Prediction, to identify practical applications and research ideas.",
+        "id": "5bd3b386-00ea-40cb-8db8-dca163d032cf",
+        "completed": false
+      },
+      {
+        "text": "Analyze the Challenges and Opportunities sections to identify research gaps, difficulties, and potential innovative research ideas.",
+        "id": "76fe4b1b-0599-47ef-adc4-0460e087230a",
+        "completed": false
+      },
+      {
+        "text": "Read the Background section to understand the applications of AI in environmental monitoring and data analysis, which could inspire new research directions.",
+        "id": "456caab6-9ed5-4ece-b1b9-c85410de0b8d",
+        "completed": false
+      },
+      {
+        "text": "Examine the Results section, focusing on publication trends, keyword analysis, thematic trends, and H-Index analysis to identify current research directions and impactful topics.",
+        "id": "4fe667bd-9e94-4126-a283-e82b0e09d7a4",
+        "completed": false
+      },
+      {
+        "text": "Analyze the Study Limitations and Conclusion, specifically the Recommendations for future research, to identify gaps and potential research topics.",
+        "id": "8c22fba4-4927-4f78-aecf-c3d091759b63",
+        "completed": false
+      }
+    ],
+    "title": "Guidance for Analyzing Research on Deep Learning Applications in Landslide Analysis and Environmental Monitoring",
+    "tldr": "This is a guide for efficiently analyzing research papers on deep learning for landslide analysis and environmental monitoring by focusing on key sections to identify research gaps and opportunities.",
+    "thumbnail": "https://images.unsplash.com/photo-1495592822108-9e6261896da8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3ODE2ODN8MHwxfHNlYXJjaHwxfHxkZWVwJTIwbGVhcm5pbmd8ZW58MHx8fHwxNzUzMjAwOTk4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    "attribution": "Photo by <a href=\"https://unsplash.com/@pietrozj\" target=\"_blank\" rel=\"noopener noreferrer\">Pietro Jeng</a> on <a href=\"https://unsplash.com\" target=\"_blank\" rel=\"noopener noreferrer\">Unsplash</a>",
+    "source": "Web",
+    "originalContent": "Deep Learning for Exploring Landslides with Remote Sensing and Geo-Environmental Data: Frameworks, Progress, Challenges, and Opportunities\n\n\n✅ الأقسام التي تحتاج لقراءتها الآن:\n1. Introduction\nضروري جدًا لفهم خلفية المشكلة، والأهداف العامة.\n\nخذ منه فكرة: لماذا مهم استخدام التعلم العميق مع الانزلاقات الأرضية؟\n\n2. Overview of Deep Learning Frameworks\nبالأخص:\n✅ Classification Framework\n\n✅ Detection Framework\n\n✅ Segmentation Framework\n\n✅ Sequence Framework\n\n✅ Hybrid Framework and Transfer Learning\n\n↪ هذه الفقرة مهمة لأنها توضح طرق استخدام DL في تحليل البيانات الجغرافية/المكانية، وقد تساعدك على تحديد إطار العمل الذي تريد تبني عنوانك فيه.\n\n3. Deep Learning Frameworks Application for Landslides\nركز على هذه الأقسام الفرعية:\n✅ Landslide Detection (Object-Based)\n\n✅ Landslide Mapping (Pixel-Level)\n\n✅ Landslide Susceptibility Mapping\n\n✅ Landslide Displacement Prediction\n\n↪ هذه الأقسام مهمة جدًا، لأنها تقدم تطبيقات عملية واقعية—وهي الأنسب لاستخلاص أفكار لعناوين الرسالة.\n\n4. Challenges and Opportunities\n✅ Challenges: اقرأها لتعرف الفجوات والصعوبات التي يمكن أن تبني عليها فكرتك البحثية.\nمثل: نقص البيانات، التحديات الحوسبية، محدودية التعميم.\n\n✅ Opportunities: هذه قد تُلهمك بفكرة بحثية مبتكرة وحديثة.\nمثال: \"استخدام شبكات مدربة مسبقًا للكشف عن الانزلاقات الأرضية\".\n\n❌ أقسام لا تحتاجها الآن (يمكن تجاهلها):\nالقسم\tالسبب\nMethods, Models, Loss and Optimizer, Evaluation Metrics, Architecture Modules in CNN\tهذه تفاصيل تقنية متقدمة لا تفيدك في اختيار العنوان، بل في تنفيذ البحث لاحقًا.\n\n✅ ماذا بعد قراءة هذه الأقسام؟\nبعد قراءتها:\n\nستعرف ما التطبيقات الممكنة للتعلم العميق في هذا المجال\n\nيمكنك اختيار زاوية معينة، مثل:\n\nالكشف عن الانزلاقات من صور أقمار صناعية باستخدام CNN\n\nالتنبؤ بالإزاحة الأرضية باستخدام نماذج تسلسلية (LSTM مثلًا)\n\nرسم خرائط الحساسية للانزلاقات من صور متعددة المصدر\n\n\n\n\n\n\n\n\n-\n\n\n\n\n\n✅ الأقسام التي يجب أن تقرأها بتركيز\n1. Introduction (المقدمة)\n1.1 Background and rationale\n→ تعطيك فكرة عن الخلفية العامة وأهمية الموضوع.\n\n1.2 Objectives of the study\n→ لتفهم ما الذي ركز عليه الباحثون بالتحديد.\n\n2. Background (الخلفية النظرية)\n2.2 Applications in environmental monitoring and data analysis\n→ يحتوي على المجالات التي استُخدم فيها الذكاء الاصطناعي، وقد يعطيك فكرة عن المجالات التي تمت دراستها جيداً، وبالتالي يمكنك التفكير في مجالات لم تُدرس بشكل كافٍ.\n\n2.2.1 Air quality monitoring\n\n2.2.2 Water quality monitoring\n\n2.2.3 Climate change modeling\n\n2.2.4 Biodiversity and ecosystem monitoring\n\n2.2.5 Disaster management\n\n4. Results\n4.1 General publication trends\n→ تعرف من خلاله تطور عدد الدراسات وتوزيعها.\n\n4.4 Keyword analysis\n\n4.4.3 Thematic trends\n→ مهم جداً لأنه يعطيك الاتجاهات البحثية الحالية، والتي منها تستطيع معرفة ما هو مشبع وما هو ناقص.\n\n4.5 H-Index analysis\n→ يساعدك على معرفة التأثير العلمي للدراسات، لتفهم أي المواضيع لها وزن بحثي أكبر.\n\n5. In-depth analysis of key literature\n5.2 Methodological advances in AIML for environmental monitoring\n→ يساعدك على معرفة الجوانب التقنية والتطورات المنهجية، وقد تجد فجوات في الأدوات أو النماذج المستخدمة.\n\n5.8 Emerging technologies and interdisciplinary applications\n→ يعطيك أفكار جديدة أو تقنيات حديثة قد لا تكون درست بشكل كافٍ.\n\n5.9 Enhancing the categorization of research\n→ قد يشير إلى نقص في التصنيف أو الترتيب العلمي الحالي، وهو مدخل جيد لفكرة بحثية.\n\n6. Study limitations\n✳️ مهم جداً لأنه يوضح الثغرات التي أشار إليها الباحثون أنفسهم.\n\n7. Conclusion\n7.2 Recommendations for future research\n→ خلاصة مباشرة وواضحة عن الفجوات التي يمكنك استغلالها.\n\n\n",
+    "createdAt": "2025-07-22T16:16:33.108Z",
+    "userEmail": "aseeltest4@gmail.com"
+  },
+  {
+    "id": "2025-07-22T16:16:56.918Z",
+    "summary": "The content provides guidelines for identifying research gaps suitable for a Master's thesis in Informatics, focusing on practicality and feasibility. It emphasizes selecting topics that haven't been adequately studied, addressing manageable technical challenges, and identifying missing models or data that can be addressed without complex resources. The content also suggests focusing on clear and direct research titles, categorizing them by difficulty (easy, medium), and avoiding overly complex topics. It highlights the importance of addressing knowledge gaps and under-covered aspects in existing literature, and the identification of excellent, feasible, and novel research topics.",
+    "tags": [
+      "research gaps",
+      "informatics",
+      "master thesis",
+      "research topics",
+      "feasibility"
+    ],
+    "tasks": [
+      {
+        "text": "Identify research topics that have not been studied sufficiently in Informatics.",
+        "id": "5f7cc8e2-9a39-4bd6-800f-87a030a0aaaf",
+        "completed": false
+      },
+      {
+        "text": "Pinpoint existing technical challenges that are manageable for a Master's thesis.",
+        "id": "5ef4d338-754f-45ad-9ceb-1b6bc3ece8a0",
+        "completed": false
+      },
+      {
+        "text": "Detect missing models, data, or case studies that can be addressed without advanced resources.",
+        "id": "593bbb3d-4293-4065-b661-bd877e035666",
+        "completed": false
+      },
+      {
+        "text": "Propose clear and direct research titles suitable for addressing identified gaps.",
+        "id": "2e376b1d-136b-4701-97d3-d007ee1b00e6",
+        "completed": false
+      },
+      {
+        "text": "Categorize research titles by difficulty level (easy, medium) and avoid overly complex topics.",
+        "id": "15280240-74e8-4a8e-bde1-17fdd9a04c48",
+        "completed": false
+      }
+    ],
+    "title": "Identifying Research Gaps for a Master's Thesis in Informatics",
+    "tldr": "This document provides guidelines for identifying practical and feasible research gaps for a Master's thesis in Informatics, focusing on manageable topics and clear research titles.",
+    "thumbnail": "https://images.unsplash.com/photo-1630852722885-6f39020d2b5b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3ODE2ODN8MHwxfHNlYXJjaHwxfHxyZXNlYXJjaCUyMGdhcHN8ZW58MHx8fHwxNzUzMjAxMDIyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+    "attribution": "Photo by <a href=\"https://unsplash.com/@karlsolano\" target=\"_blank\" rel=\"noopener noreferrer\">Karl Solano</a> on <a href=\"https://unsplash.com\" target=\"_blank\" rel=\"noopener noreferrer\">Unsplash</a>",
+    "source": "Web",
+    "originalContent": "- أن يكون الشرح منطقيًا، حياديًا، وغير مرتبط بموضوع معيّن لأنني لم أحدد بعد اتجاه بحثي الدقيق.\n- أن تكون الاقتراحات قابلة للتطبيق في سياق إعداد رسالة ماجستير في Informatika.\n\nالفجوات البحثية في النقطة\nتحديد المواضيع التي لم تُدرس بشكل كافٍ أو لم تُغطَّى بعمق في المصادر الحالية، مع التركيز على الجوانب التي تفتقر إلى التحليل أو التطبيق العملي.\n\nالإشارة إلى التحديات التقنية الموجودة والتي لا تزال قائمة، ولكن مع التركيز فقط على تلك التي يمكن التعامل معها بسهولة أو تتطلب حلولاً بسيطة.\n\nرصد نقص في النماذج أو البيانات أو دراسات الحالة المتعلقة بالنقطة، مع التركيز على الجوانب التي يمكن العمل عليها دون الحاجة إلى موارد معقدة أو متقدمة.\n\nالتأكيد على أهمية اختيار فجوات بحثية قابلة للتطبيق في سياق رسالة ماجستير في مجال Informatika، بحيث تكون مجالات الدراسة عملية وقابلة للتحقيق ضمن الوقت والموارد المتاحة.\n\nعناوين مقترحة للبحث\nاقتراح عناوين بحثية واضحة ومباشرة تركز على معالجة الفجوات المعرفية المحددة.\n\nتصنيف العناوين حسب مستوى الصعوبة:\n\nسهل: عناوين لا تتطلب تقنيات أو موارد معقدة، مناسبة للمشاريع التي يمكن إنجازها في إطار رسالة ماجستير.\n\nمتوسط: عناوين تحتاج لبعض الجهد التقني أو البحثي، لكنها لا تتضمن تحديات كبيرة.\n\nاستبعاد أي عناوين تحتوي على صعوبات تقنية أو بحثية كبيرة، مع توضيح ذلك بوضوح.\n\n\n تحديد الفجوات المعرفية أو الجوانب غير المُغطاة جيدًا في المصادر المتعلقة بهذه النقطة، مثل:\n   - مواضيع لم يتم دراستها كفاية\n   - تحديات تقنية ما زالت قائمة\n   - عناوين ممتازة وقابلة للتنفيذ وجديدة\n",
+    "createdAt": "2025-07-22T16:16:56.918Z",
+    "userEmail": "aseeltest4@gmail.com"
+  },
+  {
+    "id": "2025-07-22T16:17:40.139Z",
+    "summary": "The content focuses on identifying research gaps suitable for a Master's thesis in Informatics. It emphasizes selecting topics that are logical, neutral, and applicable within the constraints of a Master's program, avoiding complex technical challenges and focusing on areas with readily available data and models. The aim is to suggest clear, straightforward research titles, categorized by difficulty (easy, medium), that address identified knowledge gaps and are feasible to complete within the available time and resources.",
+    "tags": [
+      "research gaps",
+      "informatics",
+      "master thesis",
+      "research topics",
+      "feasibility"
+    ],
+    "tasks": [
+      {
+        "text": "Identify under-studied topics in Informatics.",
+        "id": "00d27e10-9879-4be8-a4cf-9cd204654b18",
+        "completed": false
+      },
+      {
+        "text": "Identify existing technical challenges with simple solutions.",
+        "id": "3aa9caaa-0354-40dd-9068-7d3288bd7d63",
+        "completed": false
+      },
+      {
+        "text": "Identify missing models, data, or case studies that are actionable without complex resources.",
+        "id": "37887ef3-13bf-4175-88c7-c956ddf39e61",
+        "completed": false
+      },
+      {
+        "text": "Propose clear research titles addressing identified knowledge gaps.",
+        "id": "3b487cb1-3425-4913-a5aa-a192887b98b1",
+        "completed": false
+      },
+      {
+        "text": "Classify research titles by difficulty (easy, medium).",
+        "id": "390cb9d3-1059-47dd-b0a3-458d923d1faa",
+        "completed": false
+      },
+      {
+        "text": "Exclude research titles with significant technical or research difficulties.",
+        "id": "ab356d65-5130-4560-a526-6aa41ae7b4c1",
+        "completed": false
+      }
+    ],
+    "title": "Identifying Research Gaps and Suggesting Thesis Titles in Informatics",
+    "tldr": "This outlines a strategy for finding feasible research gaps and suggesting appropriate thesis titles for a Master's degree in Informatics, focusing on simplicity and practicality.",
+    "thumbnail": "https://images.unsplash.com/photo-1630852722885-6f39020d2b5b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3ODE2ODN8MHwxfHNlYXJjaHwxfHxyZXNlYXJjaCUyMGdhcHN8ZW58MHx8fHwxNzUzMjAxMDIyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+    "attribution": "Photo by <a href=\"https://unsplash.com/@karlsolano\" target=\"_blank\" rel=\"noopener noreferrer\">Karl Solano</a> on <a href=\"https://unsplash.com\" target=\"_blank\" rel=\"noopener noreferrer\">Unsplash</a>",
+    "source": "Web",
+    "originalContent": "- أن يكون الشرح منطقيًا، حياديًا، وغير مرتبط بموضوع معيّن لأنني لم أحدد بعد اتجاه بحثي الدقيق.\n- أن تكون الاقتراحات قابلة للتطبيق في سياق إعداد رسالة ماجستير في Informatika.\n\nالفجوات البحثية في النقطة\nتحديد المواضيع التي لم تُدرس بشكل كافٍ أو لم تُغطَّى بعمق في المصادر الحالية، مع التركيز على الجوانب التي تفتقر إلى التحليل أو التطبيق العملي.\n\nالإشارة إلى التحديات التقنية الموجودة والتي لا تزال قائمة، ولكن مع التركيز فقط على تلك التي يمكن التعامل معها بسهولة أو تتطلب حلولاً بسيطة.\n\nرصد نقص في النماذج أو البيانات أو دراسات الحالة المتعلقة بالنقطة، مع التركيز على الجوانب التي يمكن العمل عليها دون الحاجة إلى موارد معقدة أو متقدمة.\n\nالتأكيد على أهمية اختيار فجوات بحثية قابلة للتطبيق في سياق رسالة ماجستير في مجال Informatika، بحيث تكون مجالات الدراسة عملية وقابلة للتحقيق ضمن الوقت والموارد المتاحة.\n\nعناوين مقترحة للبحث\nاقتراح عناوين بحثية واضحة ومباشرة تركز على معالجة الفجوات المعرفية المحددة.\n\nتصنيف العناوين حسب مستوى الصعوبة:\n\nسهل: عناوين لا تتطلب تقنيات أو موارد معقدة، مناسبة للمشاريع التي يمكن إنجازها في إطار رسالة ماجستير.\n\nمتوسط: عناوين تحتاج لبعض الجهد التقني أو البحثي، لكنها لا تتضمن تحديات كبيرة.\n\nاستبعاد أي عناوين تحتوي على صعوبات تقنية أو بحثية كبيرة، مع توضيح ذلك بوضوح.\n\n\n تحديد الفجوات المعرفية أو الجوانب غير المُغطاة جيدًا في المصادر المتعلقة بهذه النقطة، مثل:\n   - مواضيع لم يتم دراستها كفاية\n   - تحديات تقنية ما زالت قائمة\n   - عناوين ممتازة وقابلة للتنفيذ وجديدة\n",
+    "createdAt": "2025-07-22T16:17:40.139Z",
+    "userEmail": "aseeltest2@gmail.com"
   }
 ]

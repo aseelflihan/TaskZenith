@@ -7,7 +7,12 @@ const dataFilePath = path.join(process.cwd(), 'data', 'knowledge.json');
 function readData(): KnowledgeItem[] {
   try {
     const jsonData = fs.readFileSync(dataFilePath, 'utf-8');
-    return JSON.parse(jsonData);
+    const items: KnowledgeItem[] = JSON.parse(jsonData);
+    // Retroactively assign a default user to items without one
+    return items.map(item => ({
+      ...item,
+      userEmail: item.userEmail || 'unassigned@taskzenith.com',
+    }));
   } catch (error) {
     return [];
   }

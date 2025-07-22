@@ -39,11 +39,13 @@ export interface KnowledgeItem {
   tldr: string;
   summary: string;
   thumbnail: string;
+  attribution?: string;
   source: string;
   tags: string[];
   tasks: { id: string; text: string; completed: boolean }[];
   originalContent: string;
   createdAt: string;
+  userEmail: string;
 }
 
 export type ActiveTimerTarget =
