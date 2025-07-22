@@ -32,81 +32,81 @@ export function KnowledgeCard({ item, isSelected, onSelect }: KnowledgeCardProps
   return (
     <Card
       className={cn(
-        "overflow-hidden cursor-pointer relative group flex flex-col h-full",
-        "bg-transparent border border-border/20 transition-all duration-300",
-        "hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10",
-        isSelected && "border-primary shadow-lg shadow-primary/10"
+        "cyberpunk-border cursor-pointer group",
+        isSelected && "shadow-lg shadow-primary/20"
       )}
       onClick={onSelect}
     >
-      <Button
-        variant="destructive"
-        size="icon"
-        className="absolute top-2 right-2 z-20 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={handleDelete}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
-      
-      <div className="flex flex-col flex-grow">
-        <CardHeader className="p-0 relative">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Image
-                  src={item.thumbnail || "https://source.unsplash.com/400x200/?abstract,pattern"}
-                  alt={item.title}
-                  width={400}
-                  height={200}
-                  className="object-cover w-full h-32"
-                  priority
-                />
-              </TooltipTrigger>
-              {item.attribution && (
-                <TooltipContent>
-                  <p dangerouslySetInnerHTML={{ __html: item.attribution }} />
-                </TooltipContent>
+      <div className="relative bg-card rounded-[calc(var(--radius)-2px)] h-full flex flex-col">
+        <Button
+          variant="destructive"
+          size="icon"
+          className="absolute top-2 right-2 z-20 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={handleDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+        
+        <div className="flex flex-col flex-grow">
+          <CardHeader className="p-0 relative rounded-t-[calc(var(--radius)-3px)] overflow-hidden">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Image
+                    src={item.thumbnail || "https://source.unsplash.com/400x200/?abstract,pattern"}
+                    alt={item.title}
+                    width={400}
+                    height={200}
+                    className="object-cover w-full h-32"
+                    priority
+                  />
+                </TooltipTrigger>
+                {item.attribution && (
+                  <TooltipContent>
+                    <p dangerouslySetInnerHTML={{ __html: item.attribution }} />
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+          </CardHeader>
+
+          <CardContent className="p-4 flex-grow">
+            <CardTitle className="text-base font-bold mb-2 line-clamp-2">{item.title}</CardTitle>
+            <p className="text-xs text-muted-foreground line-clamp-2">{item.tldr}</p>
+          </CardContent>
+
+          <CardFooter className="p-4 flex justify-between items-center">
+            <div className="flex gap-1 flex-wrap">
+              {item.tags.slice(0, 2).map((tag) => (
+                <Badge
+                  key={tag}
+                  variant={filterTags.includes(tag) ? "default" : "secondary"}
+                  className="cursor-pointer hover:bg-primary/80 text-xs"
+                  onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFilterTag(tag);
+                  }}
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              {isLink && (
+                <Link href={item.originalContent} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </Link>
               )}
-            </Tooltip>
-          </TooltipProvider>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-        </CardHeader>
-
-        <CardContent className="p-4 flex-grow">
-          <CardTitle className="text-base font-bold mb-2 line-clamp-2">{item.title}</CardTitle>
-          <p className="text-xs text-muted-foreground line-clamp-2">{item.tldr}</p>
-        </CardContent>
-
-        <CardFooter className="p-4 flex justify-between items-center">
-          <div className="flex gap-1 flex-wrap">
-            {item.tags.slice(0, 2).map((tag) => (
-              <Badge
-                key={tag}
-                variant={filterTags.includes(tag) ? "default" : "secondary"}
-                className="cursor-pointer hover:bg-primary/80 text-xs"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFilterTag(tag);
-                }}
-              >
-                {tag}
-              </Badge>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            {isLink && (
-              <Link href={item.originalContent} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </Link>
-            )}
-            {!isLink && (
-                <FileText className="h-4 w-4 text-muted-foreground" />
-            )}
-            <span className="text-xs text-muted-foreground">{item.source}</span>
-          </div>
-        </CardFooter>
+              {!isLink && (
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className="text-xs text-muted-foreground">{item.source}</span>
+            </div>
+          </CardFooter>
+        </div>
       </div>
     </Card>
   );

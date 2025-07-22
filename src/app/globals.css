@@ -104,3 +104,54 @@
     background-clip: content-box;
   }
 }
+
+@layer components {
+  .cyberpunk-border {
+    position: relative;
+    border-radius: var(--radius);
+    background: transparent;
+    padding: 2px; /* Controls border thickness */
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  .cyberpunk-border::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 300%;
+    height: 300%;
+    background: conic-gradient(
+      from 180deg at 50% 50%,
+      #80d8ff,
+      #00c3ff 10%,
+      #0059ff 35%,
+      #00c3ff 50%,
+      #80d8ff 60%,
+      #0059ff 85%,
+      #00c3ff 95%,
+      #80d8ff 100%
+    );
+    z-index: -2;
+    animation: rotate 4s linear infinite;
+  }
+
+  .cyberpunk-border::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 2px; /* Creates the inner border */
+    background: hsl(var(--card));
+    border-radius: calc(var(--radius) - 2px);
+  }
+
+  @keyframes rotate {
+    0% {
+      transform: translate(-50%, -50%) rotate(0deg);
+    }
+    100% {
+      transform: translate(-50%, -50%) rotate(360deg);
+    }
+  }
+}
