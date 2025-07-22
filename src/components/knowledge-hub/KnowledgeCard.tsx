@@ -37,7 +37,8 @@ export function KnowledgeCard({ item, isSelected, onSelect }: KnowledgeCardProps
       )}
       onClick={onSelect}
     >
-      <div className="relative bg-card rounded-[calc(var(--radius)-2px)] h-full flex flex-col">
+      <div className="cyberpunk-fuse"></div>
+      <div className="cyberpunk-card-content h-full flex flex-col">
         <Button
           variant="destructive"
           size="icon"

@@ -115,6 +115,7 @@
     overflow: hidden;
   }
 
+  /* The main, soft blue rotating gradient */
   .cyberpunk-border::before {
     content: '';
     position: absolute;
@@ -124,26 +125,31 @@
     height: 300%;
     background: conic-gradient(
       from 180deg at 50% 50%,
-      #80d8ff,
-      #00c3ff 10%,
-      #0059ff 35%,
-      #00c3ff 50%,
-      #80d8ff 60%,
-      #0059ff 85%,
-      #00c3ff 95%,
-      #80d8ff 100%
+      #80d8ff, #00c3ff, #0059ff, #00c3ff, #80d8ff
     );
     z-index: -2;
     animation: rotate 4s linear infinite;
   }
 
-  .cyberpunk-border::after {
-    content: '';
+  /* The fast-moving magenta "fuse" */
+  .cyberpunk-fuse {
     position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    background: conic-gradient(
+      from 90deg at 50% 50%,
+      transparent 0, #f800ff 1deg, transparent 5deg
+    );
     z-index: -1;
-    inset: 2px; /* Creates the inner border */
+    animation: rotate 2.5s linear infinite reverse;
+  }
+
+  /* The inner element that masks the effect and acts as the card background */
+  .cyberpunk-card-content {
     background: hsl(var(--card));
     border-radius: calc(var(--radius) - 2px);
+    position: relative;
+    z-index: 2;
   }
 
   @keyframes rotate {

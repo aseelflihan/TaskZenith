@@ -41,12 +41,13 @@ export function AddContentPanel() {
   return (
     <div className="p-4 bg-gray-50 dark:bg-gray-900/50 h-full flex flex-col">
       <h2 className="text-lg font-semibold mb-4">Add to Knowledge Hub</h2>
-      <div className="flex-grow">
+      <div>
         <Textarea
           placeholder="Drop a link, a paragraph, or just a thought..."
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          className="h-full bg-transparent resize-none"
+          className="bg-transparent resize-none"
+          rows={5}
           disabled={isProcessing}
         />
       </div>

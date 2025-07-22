@@ -33,14 +33,14 @@ export default function KnowledgeHubPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-10 h-full">
-      <div className="lg:col-span-3 xl:col-span-2 border-r min-h-0">
+    <div className="grid grid-cols-1 lg:grid-cols-10 h-full overflow-hidden">
+      <div className="lg:col-span-3 xl:col-span-2 border-r min-h-0 overflow-y-auto">
         <AddContentPanel />
       </div>
-      <div className="lg:col-span-4 xl:col-span-5 border-r min-h-0">
+      <div className="lg:col-span-4 xl:col-span-5 border-r min-h-0 overflow-y-auto">
         <ContentGrid />
       </div>
-      <div className="lg:col-span-3 xl:col-span-3 min-h-0">
+      <div className="lg:col-span-3 xl:col-span-3 min-h-0 overflow-y-auto">
         <AIInsightPanel />
       </div>
     </div>
