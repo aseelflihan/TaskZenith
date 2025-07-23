@@ -20,6 +20,7 @@ export function AIInsightPanel() {
   const allTags = [...new Set(items.flatMap(item => item.tags))].sort();
   
   const isLink = selectedItem?.originalContent && (selectedItem.originalContent.startsWith('http') || selectedItem.originalContent.startsWith('www'));
+  const isFile = selectedItem?.source === 'File Upload';
 
   const handleAddTasks = async () => {
     if (!selectedItem) return;
@@ -112,9 +113,28 @@ export function AIInsightPanel() {
                   </TabsContent>
                   {!isLink && (
                     <TabsContent value="original">
-                      <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                        {selectedItem.originalContent}
-                      </div>
+                      {isFile ? (
+                        <div className="space-y-4">
+                          <div className="p-4 border rounded-lg bg-muted/50">
+                            <h4 className="font-semibold mb-2">File Information</h4>
+                            <div className="space-y-1 text-sm text-muted-foreground">
+                              <p><span className="font-medium">Name:</span> {(selectedItem as any).fileName}</p>
+                              <p><span className="font-medium">Type:</span> {(selectedItem as any).fileType}</p>
+                              <p><span className="font-medium">Size:</span> {((selectedItem as any).fileSize / 1024).toFixed(2)} KB</p>
+                            </div>
+                          </div>
+                          <div className="max-h-64 overflow-y-auto">
+                            <h4 className="font-semibold mb-2">Extracted Content</h4>
+                            <pre className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/30 p-3 rounded border">
+                              {selectedItem.originalContent}
+                            </pre>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                          {selectedItem.originalContent}
+                        </div>
+                      )}
                     </TabsContent>
                   )}
                 </div>

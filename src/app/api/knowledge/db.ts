@@ -41,3 +41,21 @@ export function deleteItem(id: string) {
         writeData(knowledgeItems);
     }
 }
+
+export function getItem(id: string): KnowledgeItem | null {
+    return knowledgeItems.find((item) => item.id === id) || null;
+}
+
+export function updateItem(id: string, updates: Partial<KnowledgeItem>) {
+    const itemIndex = knowledgeItems.findIndex((item) => item.id === id);
+    if (itemIndex > -1) {
+        knowledgeItems[itemIndex] = { ...knowledgeItems[itemIndex], ...updates };
+        writeData(knowledgeItems);
+        return knowledgeItems[itemIndex];
+    }
+    return null;
+}
+
+export function getItemsByUser(userEmail: string): KnowledgeItem[] {
+    return knowledgeItems.filter((item) => item.userEmail === userEmail);
+}

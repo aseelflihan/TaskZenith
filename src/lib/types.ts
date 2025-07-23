@@ -46,6 +46,11 @@ export interface KnowledgeItem {
   originalContent: string;
   createdAt: string;
   userEmail: string;
+  // File-specific properties
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
+  fileData?: string; // Base64 encoded file content
 }
 
 export type ActiveTimerTarget =

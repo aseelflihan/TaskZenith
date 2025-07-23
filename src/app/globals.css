@@ -76,7 +76,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground custom-scrollbar;
     /* Adding smooth transition for color changes */
     transition: background-color 0.3s ease, color 0.3s ease;
   }
@@ -115,7 +115,7 @@
     overflow: hidden;
   }
 
-  /* The main, soft blue rotating gradient */
+  /* Glowing rotating frame */
   .cyberpunk-border::before {
     content: '';
     position: absolute;
@@ -125,31 +125,39 @@
     height: 300%;
     background: conic-gradient(
       from 180deg at 50% 50%,
-      #80d8ff, #00c3ff, #0059ff, #00c3ff, #80d8ff
+      hsl(var(--primary) / 0.5),
+      hsl(var(--primary) / 0.8),
+      hsl(var(--primary) / 0.5)
     );
     z-index: -2;
-    animation: rotate 4s linear infinite;
+    animation: rotate 6s linear infinite;
   }
 
-  /* The fast-moving magenta "fuse" */
-  .cyberpunk-fuse {
+  /* Static bottom glow */
+  .cyberpunk-border::after {
+    content: '';
     position: absolute;
-    inset: 0;
-    border-radius: var(--radius);
-    background: conic-gradient(
-      from 90deg at 50% 50%,
-      transparent 0, #f800ff 1deg, transparent 5deg
+    bottom: -20px;
+    left: 0;
+    right: 0;
+    height: 60px;
+    width: 100%;
+    background: radial-gradient(
+      ellipse 80% 50% at 50% 100%,
+      hsl(var(--primary) / 0.4),
+      transparent
     );
+    filter: blur(15px);
     z-index: -1;
-    animation: rotate 2.5s linear infinite reverse;
   }
 
-  /* The inner element that masks the effect and acts as the card background */
   .cyberpunk-card-content {
     background: hsl(var(--card));
     border-radius: calc(var(--radius) - 2px);
     position: relative;
     z-index: 2;
+    height: 100%;
+    width: 100%;
   }
 
   @keyframes rotate {
@@ -159,5 +167,223 @@
     100% {
       transform: translate(-50%, -50%) rotate(360deg);
     }
+  }
+}
+
+/* --- Knowledge Hub Action Buttons Styling --- */
+@layer components {
+  .knowledge-action-btn {
+    @apply transition-all duration-300 ease-in-out;
+    @apply rounded-lg;
+  }
+  
+  .knowledge-action-btn:hover {
+    @apply shadow-lg;
+  }
+  
+  .knowledge-download-btn {
+    @apply knowledge-action-btn;
+    @apply border-green-200 text-green-600 hover:border-green-300 hover:bg-green-50;
+    @apply hover:text-green-700 hover:shadow-green-200/50;
+  }
+  
+  .dark .knowledge-download-btn {
+    @apply border-green-800 text-green-400 hover:border-green-700 hover:bg-green-950/30;
+    @apply hover:text-green-300 hover:shadow-green-900/50;
+  }
+  
+  .knowledge-view-btn {
+    @apply knowledge-action-btn;
+    @apply border-blue-200 text-blue-600 hover:border-blue-300 hover:bg-blue-50;
+    @apply hover:text-blue-700 hover:shadow-blue-200/50;
+  }
+  
+  .dark .knowledge-view-btn {
+    @apply border-blue-800 text-blue-400 hover:border-blue-700 hover:bg-blue-950/30;
+    @apply hover:text-blue-300 hover:shadow-blue-900/50;
+  }
+  
+  .knowledge-external-btn {
+    @apply knowledge-action-btn;
+    @apply border-purple-200 text-purple-600 hover:border-purple-300 hover:bg-purple-50;
+    @apply hover:text-purple-700 hover:shadow-purple-200/50;
+  }
+  
+  .dark .knowledge-external-btn {
+    @apply border-purple-800 text-purple-400 hover:border-purple-700 hover:bg-purple-950/30;
+    @apply hover:text-purple-300 hover:shadow-purple-900/50;
+  }
+  
+  .knowledge-file-badge {
+    @apply bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700;
+    @apply border border-slate-300 rounded-lg px-3 py-1.5;
+    @apply text-xs font-medium shadow-sm;
+    @apply transition-all duration-200 hover:shadow-md;
+  }
+  
+  .dark .knowledge-file-badge {
+    @apply from-slate-800 to-slate-700 text-slate-300;
+    @apply border-slate-600 hover:from-slate-700 hover:to-slate-600;
+  }
+  
+  /* Enhanced Blue Glow for Knowledge Cards */
+  
+  
+  /* Vertical Layout Knowledge Card Styles - Wide Cards */
+  .knowledge-card-vertical {
+    @apply transition-all duration-300 ease-in-out;
+    min-height: 520px;
+  }
+  
+  .knowledge-card-vertical .card-image-section {
+    height: 224px; /* Increased from 192px */
+    flex-shrink: 0;
+  }
+  
+  .knowledge-card-vertical .card-content-section {
+    @apply flex-1 flex flex-col min-h-0;
+  }
+  
+  .knowledge-card-vertical .card-title {
+    @apply text-xl font-bold leading-tight mb-4; /* Increased font size */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .knowledge-card-vertical .card-description {
+    @apply text-base leading-relaxed mb-5 flex-grow; /* Increased font size and spacing */
+    display: -webkit-box;
+    -webkit-line-clamp: 6; /* Increased from 4 to 6 lines */
+    line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .knowledge-card-vertical .card-tags-section {
+    @apply flex flex-wrap gap-2 mb-5; /* Increased spacing */
+  }
+  
+  .knowledge-card-vertical .card-file-info {
+    @apply text-base bg-opacity-30 rounded-lg p-4 mb-5; /* Increased padding and spacing */
+  }
+  
+  .knowledge-card-vertical .card-footer-section {
+    @apply flex items-center justify-between pt-4 border-t border-opacity-50 mt-auto;
+  }
+  
+  .knowledge-card-vertical .card-action-buttons {
+    @apply h-10 w-10; /* Larger buttons */
+  }
+  
+  .knowledge-card-vertical .card-action-buttons svg {
+    @apply h-5 w-5; /* Larger icons */
+  }
+}
+
+/* --- Custom Scrollbar Styling --- */
+@layer utilities {
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.3);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    opacity: 0;
+  }
+  
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    opacity: 1;
+    background-color: rgba(156, 163, 175, 0.5);
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(156, 163, 175, 0.7);
+  }
+  
+  .dark .custom-scrollbar {
+    scrollbar-color: rgba(75, 85, 99, 0.3) transparent;
+  }
+  
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(75, 85, 99, 0.3);
+  }
+  
+  .dark .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(75, 85, 99, 0.5);
+  }
+  
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(75, 85, 99, 0.7);
+  }
+}
+
+@layer components {
+  .error-panel {
+    @apply p-4 mb-4 border-l-4 border-destructive bg-destructive/10 text-destructive-foreground;
+    @apply rounded-r-lg text-sm;
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .error-panel p {
+    @apply text-destructive;
+  }
+  
+  .dark .error-panel p {
+    @apply text-red-400;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* OCR Image Preview Styles */
+  .ocr-preview-container {
+    @apply relative overflow-hidden rounded-lg border-2 border-dashed border-primary/30;
+    @apply bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20;
+    transition: all 0.3s ease;
+  }
+
+  .ocr-preview-container:hover {
+    @apply border-primary/50 shadow-lg;
+    @apply bg-gradient-to-br from-green-100 to-blue-100 dark:from-green-900/30 dark:to-blue-900/30;
+  }
+
+  .ocr-status-badge {
+    @apply inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium;
+    @apply bg-green-100 text-green-700 border border-green-200;
+    @apply dark:bg-green-900/30 dark:text-green-400 dark:border-green-800;
+  }
+
+  .processing-indicator {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg;
+    @apply bg-blue-100 text-blue-700 border border-blue-200;
+    @apply dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800;
+  }
+
+  .processing-indicator .spinner {
+    @apply animate-spin h-4 w-4;
   }
 }

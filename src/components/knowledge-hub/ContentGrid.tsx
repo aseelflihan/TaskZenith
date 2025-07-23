@@ -65,7 +65,7 @@ export function ContentGrid() {
           <Button variant="ghost" size="sm" onClick={clearFilterTags}>Clear all</Button>
         </div>
       )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto flex-grow pt-4 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {filteredItems.length > 0 ? (
             filteredItems.map((item) => (
             <KnowledgeCard
@@ -77,7 +77,8 @@ export function ContentGrid() {
           ))
         ) : (
             <div className="col-span-full text-center text-muted-foreground mt-8">
-                No items found for the selected tags.
+                <p className="text-lg">No items found</p>
+                <p className="text-sm mt-2">Try adjusting your search terms or filters</p>
             </div>
         )}
       </div>
