@@ -14,7 +14,15 @@ const prompt = ai.definePrompt({
   name: 'summarizeAndExtractTasksPrompt',
   input: { schema: z.object({ content: z.string() }) },
   output: { schema: outputSchema },
-  prompt: `You are an expert content analyst. Analyze the following content and provide a structured JSON response with the following fields: title, summary, tldr, tags, and tasks.
+  prompt: `You are an expert content analyst. Analyze the following content and provide a structured JSON response with the following fields:
+
+1. **title**: Create a concise, descriptive title that captures the main topic of the content
+2. **summary**: Write a comprehensive paragraph-length summary that covers ALL the main points and key information from the content. This should be a detailed overview that someone could read to understand the complete content without reading the original
+3. **tldr**: Provide a very short, one-sentence summary (TL;DR) that captures the absolute essence
+4. **tags**: Generate 3-5 relevant keywords or tags that best describe the content
+5. **tasks**: Extract any actionable items, to-dos, or action points mentioned in the content
+
+Important: The summary should be comprehensive and include all major points from the content, not just a brief description.
 
 Content:
 {{content}}

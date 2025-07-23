@@ -137,7 +137,8 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
               .replace(/\n\s*\n/g, '\n\n') // Clean up multiple newlines
               .trim();
             
-            resolve(`PDF Document processed successfully
+            // Return formatted version for display in Original tab
+            const formattedForDisplay = `PDF Document processed successfully
 
 📄 PDF Information:
 • Number of Pages: ${pageCount}
@@ -145,7 +146,9 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
 • Processing: Text extraction completed
 
 📖 Extracted Content:
-${cleanedText}`);
+${cleanedText}`;
+
+            resolve(formattedForDisplay);
           }
           
         } catch (processingError) {
@@ -703,8 +706,41 @@ File Size: ${(file.size / 1024).toFixed(2)} KB
 Extracted Content:
 ${extractedContent}`;
       }
+    } else if (file.type === 'application/pdf') {
+      // For PDF files, extract just the actual content for AI analysis
+      const textLines = extractedContent.split('\n');
+      let actualText = '';
+      
+      // Find the extracted content section
+      const extractedContentIndex = textLines.findIndex(line => line.includes('📖 Extracted Content:'));
+      if (extractedContentIndex !== -1 && extractedContentIndex + 1 < textLines.length) {
+        // Get everything after "📖 Extracted Content:" 
+        actualText = textLines.slice(extractedContentIndex + 1)
+          .join('\n')
+          .trim();
+      }
+      
+      // If we found actual text, use it for AI analysis, otherwise use full content
+      if (actualText && actualText.length > 10) {
+        contentForAI = `File Name: ${file.name}
+File Type: PDF Document
+File Size: ${(file.size / 1024).toFixed(2)} KB
+
+Extracted text content:
+${actualText}
+
+Note: This text was extracted from a PDF document.`;
+      } else {
+        // Fallback for PDFs with minimal content
+        contentForAI = `File Name: ${file.name}
+File Type: ${file.type}
+File Size: ${(file.size / 1024).toFixed(2)} KB
+
+Extracted Content:
+${extractedContent}`;
+      }
     } else {
-      // For non-image files, use the original method
+      // For other file types, use the original method
       contentForAI = `File Name: ${file.name}
 File Type: ${file.type}
 File Size: ${(file.size / 1024).toFixed(2)} KB
