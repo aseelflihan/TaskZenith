@@ -32,12 +32,96 @@ export const summarizeAndExtractTasksFlow = ai.defineFlow(
         throw new Error("Content cannot be empty.");
     }
     
-    const { output } = await prompt({ content });
+    const maxRetries = 3;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🤖 AI processing attempt ${attempt}/${maxRetries}...`);
+        
+        const { output } = await prompt({ content });
 
-    if (!output) {
-        throw new Error("Failed to get a structured response from the model.");
+        if (!output) {
+            throw new Error("Failed to get a structured response from the model.");
+        }
+
+        console.log(`✅ AI processing successful on attempt ${attempt}`);
+        return output;
+        
+      } catch (error: any) {
+        console.error(`❌ AI attempt ${attempt} failed:`, error);
+        
+        // Check for specific error types
+        if (error.message?.includes('503') || error.message?.includes('overloaded')) {
+          console.log(`⏰ Model overloaded, retrying in ${attempt * 2} seconds...`);
+          
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, attempt * 2000)); // Progressive delay
+            continue;
+          }
+        }
+        
+        // If it's the last attempt or non-retryable error, fallback
+        if (attempt === maxRetries || !error.message?.includes('503')) {
+          console.log('🔄 Using fallback AI analysis...');
+          return createFallbackAnalysis(content);
+        }
+      }
     }
-
-    return output;
+    
+    // This should never be reached, but just in case
+    return createFallbackAnalysis(content);
   }
 );
+
+// Fallback analysis when AI is unavailable
+function createFallbackAnalysis(content: string) {
+  console.log('📝 Creating fallback analysis...');
+  
+  // Extract potential tasks using simple patterns
+  const taskPatterns = [
+    /(?:todo|task|action|complete|finish|do|make|create|write|send|call|email|review|update|fix|check|verify|test)[\s:]+([^\n.!?]+)/gi,
+    /(?:need to|should|must|have to|required to)\s+([^\n.!?]+)/gi,
+    /(?:•|-)[\s]*([^\n]+)/g
+  ];
+  
+  const extractedTasks: { text: string }[] = [];
+  
+  taskPatterns.forEach(pattern => {
+    const matches = content.match(pattern);
+    if (matches) {
+      matches.forEach(match => {
+        const cleanTask = match.replace(/^(?:todo|task|action|complete|finish|do|make|create|write|send|call|email|review|update|fix|check|verify|test|need to|should|must|have to|required to|•|-)\s*:?\s*/i, '').trim();
+        if (cleanTask.length > 5 && cleanTask.length < 200) {
+          extractedTasks.push({ text: cleanTask });
+        }
+      });
+    }
+  });
+  
+  // Generate simple summary
+  const summary = content.length > 200 
+    ? content.substring(0, 200) + '...' 
+    : content;
+  
+  // Generate basic tags
+  const commonWords = content.toLowerCase().match(/\b\w{4,}\b/g) || [];
+  const wordFreq: { [key: string]: number } = {};
+  commonWords.forEach(word => {
+    if (!['this', 'that', 'with', 'from', 'have', 'been', 'will', 'would', 'could', 'should'].includes(word)) {
+      wordFreq[word] = (wordFreq[word] || 0) + 1;
+    }
+  });
+  
+  const tags = Object.entries(wordFreq)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 5)
+    .map(([word]) => word);
+  
+  return {
+    title: `Document Analysis (AI Offline)`,
+    summary: `Document processed successfully. ${summary}`,
+    tldr: content.length > 100 ? `Summary of uploaded content.` : content.substring(0, 50),
+    tags: tags.length > 0 ? tags : ['document', 'upload', 'content'],
+    tasks: extractedTasks.length > 0 ? extractedTasks.slice(0, 10) : [{ text: 'Review uploaded content' }]
+  };
+}

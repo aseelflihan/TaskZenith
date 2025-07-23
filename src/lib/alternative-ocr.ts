@@ -1,53 +1,97 @@
 // Alternative OCR solutions that work reliably in Next.js
 // Free and unlimited OCR using browser APIs and external services
 
-// OCR.space free API implementation
-export async function ocrSpaceAPI(imageBuffer: Buffer, language: string = 'ara'): Promise<{
+// OCR.space free API implementation with retry and timeout handling
+export async function ocrSpaceAPI(imageBuffer: Buffer, language: string = 'eng'): Promise<{
   text: string;
   confidence: number;
   method: string;
 }> {
-  try {
-    console.log('🔄 Trying OCR.space free API...');
-    
-    // Convert buffer to base64
-    const base64Image = imageBuffer.toString('base64');
-    
-    // OCR.space free API endpoint
-    const formData = new FormData();
-    formData.append('base64Image', `data:image/png;base64,${base64Image}`);
-    formData.append('language', language); // 'ara' for Arabic, 'eng' for English
-    formData.append('apikey', 'helloworld'); // Free key for testing
-    formData.append('scale', 'true');
-    formData.append('OCREngine', '2'); // Engine 2 supports Arabic
-    
-    const response = await fetch('https://api.ocr.space/parse/image', {
-      method: 'POST',
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      throw new Error(`OCR.space API error: ${response.status}`);
+  const maxRetries = 2;
+  const timeoutMs = 30000; // 30 seconds timeout
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 Trying OCR.space free API (attempt ${attempt}/${maxRetries})...`);
+      
+      // Convert buffer to base64
+      const base64Image = imageBuffer.toString('base64');
+      
+      // Validate and fix language code
+      const validLanguages = ['eng', 'chi_sim', 'fre', 'ger', 'jpn', 'kor', 'spa'];
+      const safeLanguage = validLanguages.includes(language) ? language : 'eng';
+      
+      if (language !== safeLanguage) {
+        console.log(`⚠️ Language '${language}' not supported, using '${safeLanguage}' instead`);
+      }
+      
+      // OCR.space free API endpoint with timeout
+      const formData = new FormData();
+      formData.append('base64Image', `data:image/png;base64,${base64Image}`);
+      formData.append('language', safeLanguage);
+      formData.append('apikey', 'helloworld'); // Free key for testing
+      formData.append('scale', 'true');
+      formData.append('OCREngine', '1'); // Engine 1 is more stable
+      formData.append('detectOrientation', 'true');
+      
+      // Create timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), timeoutMs);
+      });
+      
+      // Race between fetch and timeout
+      const fetchPromise = fetch('https://api.ocr.space/parse/image', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+      
+      if (!response.ok) {
+        throw new Error(`OCR.space API error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.IsErroredOnProcessing) {
+        const errorMsg = Array.isArray(result.ErrorMessage) 
+          ? result.ErrorMessage.join(', ') 
+          : result.ErrorMessage || 'OCR processing failed';
+        
+        // Handle specific timeout errors
+        if (errorMsg.includes('E101') || errorMsg.includes('Timed out')) {
+          console.log(`⏰ OCR timeout on attempt ${attempt}, retrying...`);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // Progressive delay
+            continue;
+          }
+        }
+        
+        throw new Error(errorMsg);
+      }
+      
+      const extractedText = result.ParsedResults[0]?.ParsedText || '';
+      console.log(`✅ OCR.space completed: ${extractedText.length} characters`);
+      
+      return {
+        text: extractedText.trim(),
+        confidence: 85, // OCR.space doesn't provide confidence, using estimated value
+        method: `OCR.space Free API (attempt ${attempt})`
+      };
+      
+    } catch (error) {
+      console.error(`❌ OCR.space attempt ${attempt} failed:`, error);
+      
+      if (attempt === maxRetries) {
+        throw new Error(`OCR.space API failed after ${maxRetries} attempts: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
-    
-    const result = await response.json();
-    
-    if (result.IsErroredOnProcessing) {
-      throw new Error(result.ErrorMessage || 'OCR processing failed');
-    }
-    
-    const extractedText = result.ParsedResults[0]?.ParsedText || '';
-    console.log(`✅ OCR.space completed: ${extractedText.length} characters`);
-    
-    return {
-      text: extractedText.trim(),
-      confidence: 85, // OCR.space doesn't provide confidence, using estimated value
-      method: 'OCR.space Free API'
-    };
-  } catch (error) {
-    console.error('❌ OCR.space failed:', error);
-    throw new Error(`OCR.space API failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+  
+  throw new Error('OCR.space API failed: Maximum retries exceeded');
 }
 
 // Simple browser-based image analysis
@@ -171,6 +215,38 @@ export async function guidedTextExtraction(imageBuffer: Buffer): Promise<{
   };
 }
 
+// Tesseract.js local OCR implementation (fallback)
+export async function tesseractLocalOCR(imageBuffer: Buffer): Promise<{
+  text: string;
+  confidence: number;
+  method: string;
+}> {
+  try {
+    console.log('🔄 Trying local Tesseract.js OCR...');
+    
+    // Dynamic import for Tesseract.js
+    const { createWorker } = await import('tesseract.js');
+    
+    const worker = await createWorker('eng');
+    
+    const { data: { text, confidence } } = await worker.recognize(imageBuffer);
+    
+    await worker.terminate();
+    
+    console.log(`✅ Tesseract.js completed: ${text.length} characters, ${confidence}% confidence`);
+    
+    return {
+      text: text.trim(),
+      confidence: confidence || 0,
+      method: 'Tesseract.js Local OCR'
+    };
+    
+  } catch (error) {
+    console.error('❌ Tesseract.js failed:', error);
+    throw new Error(`Tesseract.js failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
 // Main robust OCR function with free alternatives
 export async function freeRobustOCR(imageBuffer: Buffer, mimeType: string): Promise<{
   text: string;
@@ -181,18 +257,18 @@ export async function freeRobustOCR(imageBuffer: Buffer, mimeType: string): Prom
   
   const methods = [
     {
-      name: 'OCR.space Free API',
-      fn: () => ocrSpaceAPI(imageBuffer, 'eng'), // Try English first
+      name: 'OCR.space English API',
+      fn: () => ocrSpaceAPI(imageBuffer, 'eng'), // Start with English for better reliability
       priority: 1
-    },
-    {
-      name: 'OCR.space Arabic API',
-      fn: () => ocrSpaceAPI(imageBuffer, 'ara'), // Then Arabic
-      priority: 2
     },
     {
       name: 'Browser Image Analysis',
       fn: () => browserImageAnalysis(imageBuffer),
+      priority: 2
+    },
+    {
+      name: 'Tesseract.js Local OCR',
+      fn: () => tesseractLocalOCR(imageBuffer),
       priority: 3
     },
     {
@@ -208,7 +284,7 @@ export async function freeRobustOCR(imageBuffer: Buffer, mimeType: string): Prom
       const result = await method.fn();
       
       // If we get meaningful text (not just guidance), return it
-      if (result.text && result.text.length > 100 && !result.text.includes('📷 Image Analysis')) {
+      if (result.text && result.text.length > 50 && !result.text.includes('📷 Image Analysis')) {
         console.log(`✅ ${method.name} succeeded with ${result.text.length} characters`);
         return result;
       } else if (method.priority <= 2) {
