@@ -22,6 +22,22 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config, { isServer }) => {
+    // Ignore critical dependency warnings for handlebars and opentelemetry
+    config.ignoreWarnings = [
+      /Critical dependency: the request of a dependency is an expression/,
+      /Module not found: Can't resolve 'handlebars'/,
+      /Module not found: Can't resolve '@opentelemetry/,
+    ];
+    
+    // Set exprContextCritical to false to reduce warnings
+    config.module = {
+      ...config.module,
+      exprContextCritical: false,
+    };
+
+    return config;
+  },
 };
 
 module.exports = nextConfig;
