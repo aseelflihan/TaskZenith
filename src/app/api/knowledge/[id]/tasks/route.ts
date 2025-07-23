@@ -6,10 +6,10 @@ let mainTaskList: any[] = [];
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { tasks } = await req.json();
 
     const knowledgeItem = knowledgeItems.find((item: any) => item.id === id);

@@ -26,6 +26,7 @@ const nextConfig = {
     // Ignore critical dependency warnings for handlebars and opentelemetry
     config.ignoreWarnings = [
       /Critical dependency: the request of a dependency is an expression/,
+      /require\.extensions is not supported by webpack/,
       /Module not found: Can't resolve 'handlebars'/,
       /Module not found: Can't resolve '@opentelemetry/,
     ];
@@ -35,6 +36,14 @@ const nextConfig = {
       ...config.module,
       exprContextCritical: false,
     };
+
+    // Specifically ignore handlebars require.extensions warnings
+    config.externals = config.externals || [];
+    if (!isServer) {
+      config.externals.push({
+        'handlebars': 'commonjs handlebars'
+      });
+    }
 
     return config;
   },
