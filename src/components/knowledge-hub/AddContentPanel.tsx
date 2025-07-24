@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { getFileExtension } from "@/lib/file-utils";
-import { Loader2, Plus, Upload, FileText, Image as ImageIcon, FileVideo, Table, Monitor, Eye } from "lucide-react";
+import { Loader2, Plus, Upload, FileText, Image as ImageIcon, FileVideo, Table, Monitor, Eye, Sparkles } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import Lottie from "lottie-react";
+import animationData from "@/assets/animations/Animation_loading.json";
 import { useKnowledgeHubStore } from "./useKnowledgeHubStore";
 import { KnowledgeItem } from "@/lib/types";
 import Image from "next/image";
@@ -114,9 +116,26 @@ export function AddContentPanel() {
     }
   };
 
+  const getProcessingButtonText = () => {
+    if (!selectedFile) return "Analyzing...";
+    
+    const fileType = getFileExtension(selectedFile.name, selectedFile.type).toUpperCase();
+
+    if (selectedFile.type.startsWith('image/')) {
+      return `Scanning...`;
+    }
+    if (fileType === 'PDF') {
+      return `Reading PDF...`;
+    }
+    if (fileType === 'DOCX' || fileType === 'DOC') {
+      return `Reading Doc...`;
+    }
+    return "Processing...";
+  };
+
   return (
-    <div className="p-4 bg-gray-50 dark:bg-gray-900/50 h-full flex flex-col">
-      <h2 className="text-lg font-semibold mb-4">Add to Knowledge Hub</h2>
+    <div className="p-4 bg-transparent backdrop-blur-sm h-full flex flex-col">
+      <h2 className="text-lg font-semibold mb-4">Add Content</h2>
       
       {/* File Upload Section */}
       <div className="mb-4">
@@ -265,22 +284,23 @@ export function AddContentPanel() {
       <Button
         onClick={handleSubmit}
         disabled={isProcessing || (!content.trim() && !selectedFile)}
-        className="mt-4 w-full h-12 text-base font-medium"
+        className="mt-4 w-full h-12 text-base font-medium text-white bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-300 ease-in-out"
         size="lg"
       >
         {isProcessing ? (
-          <>
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            {selectedFile?.type.startsWith('image/') 
-              ? "Extracting Text with OCR..." 
-              : selectedFile 
-                ? "Processing File..." 
-                : "Analyzing..."}
-          </>
+          <div className="flex items-center justify-center">
+            <Lottie
+              animationData={animationData}
+              loop={true}
+              style={{ width: 40, height: 40 }}
+              className="mr-2"
+            />
+            <span className="font-medium tracking-wide">{getProcessingButtonText()}</span>
+          </div>
         ) : (
           <>
-            <Plus className="mr-2 h-5 w-5" />
-            Add to Knowledge Hub
+            <Sparkles className="mr-2 h-5 w-5" />
+            Add to Hub
           </>
         )}
       </Button>

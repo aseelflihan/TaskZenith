@@ -9,13 +9,16 @@ import { useKnowledgeHubStore } from "./useKnowledgeHubStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { addKnowledgeHubTasksAction } from "@/lib/actions/knowledge-hub.actions";
+import { TaskPreviewModal } from "./TaskPreviewModal";
+import { SmartTaskGenerator } from "./SmartTaskGenerator";
 
 export function AIInsightPanel() {
   const { items, selectedItem, toggleFilterTag, filterTags } = useKnowledgeHubStore();
   const { toast } = useToast();
   const [isAddingTasks, setIsAddingTasks] = useState(false);
+  const [showTaskPreview, setShowTaskPreview] = useState(false);
 
   const allTags = [...new Set(items.flatMap(item => item.tags))].sort();
   
@@ -23,19 +26,46 @@ export function AIInsightPanel() {
   const isFile = selectedItem?.source === 'File Upload';
 
   const handleAddTasks = async () => {
+    if (!selectedItem || selectedItem.tasks.length === 0) {
+      toast({
+        title: "No tasks available",
+        description: "No tasks are available to add to the task list.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowTaskPreview(true);
+  };
+
+  const handleConfirmTasks = async (selectedTasks: any[]) => {
     if (!selectedItem) return;
+    
     setIsAddingTasks(true);
     try {
-      const result = await addKnowledgeHubTasksAction(selectedItem);
+      // Convert selected tasks to required format
+      const enhancedItem = {
+        ...selectedItem,
+        tasks: selectedTasks.map(task => ({
+          id: task.id,
+          text: task.text,
+          completed: false,
+          deadline: task.deadline,
+          priority: task.priority,
+          durationMinutes: task.durationMinutes,
+        }))
+      };
+
+      const result = await addKnowledgeHubTasksAction(enhancedItem);
 
       if (result.success) {
         toast({
-          title: "Tasks Added",
-          description: "The actionable tasks have been added to your main task list.",
+          title: "Tasks added successfully",
+          description: `${selectedTasks.length} task${selectedTasks.length !== 1 ? 's' : ''} added to your main task list.`,
         });
+        setShowTaskPreview(false);
       } else {
         toast({
-          title: "Error",
+          title: "Error adding tasks",
           description: result.error || "Failed to add tasks.",
           variant: "destructive",
         });
@@ -43,8 +73,8 @@ export function AIInsightPanel() {
     } catch (error) {
       console.error("Error adding tasks:", error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred.",
+        title: "Unexpected error",
+        description: "An error occurred while adding tasks.",
         variant: "destructive",
       });
     } finally {
@@ -79,23 +109,41 @@ export function AIInsightPanel() {
                     <p className="text-sm text-muted-foreground">{selectedItem.summary}</p>
                   </TabsContent>
                   <TabsContent value="tasks">
-                    <ul className="space-y-2">
-                      {selectedItem.tasks.map((task) => (
-                        <li key={task.id} className="flex items-center">
-                          <span className="flex-grow">{task.text}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <Button className="mt-4 w-full" onClick={handleAddTasks} disabled={isAddingTasks}>
-                      {isAddingTasks ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Adding...
-                        </>
-                      ) : (
-                        "Add Tasks to My List"
-                      )}
-                    </Button>
+                    <div className="space-y-4">
+                      {/* Smart Task Generator */}
+                      <SmartTaskGenerator
+                        knowledgeItem={selectedItem}
+                        onTasksAdded={() => {
+                          toast({
+                            title: "Tasks added successfully",
+                            description: "Tasks have been added to your main task list.",
+                          });
+                        }}
+                      />
+                      
+                      {/* Current Task List */}
+                      <div className="border-t pt-4">
+                        <h4 className="font-semibold text-sm mb-3 text-muted-foreground">
+                          Tasks extracted from content:
+                        </h4>
+                        <ul className="space-y-3">
+                          {selectedItem.tasks.map((task) => (
+                            <li key={task.id} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+                              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                              <span className="flex-grow text-sm">{task.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        
+                        {selectedItem.tasks.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                            <p className="text-sm">No tasks extracted from this content</p>
+                            <p className="text-xs mt-1">Use "Generate Smart Tasks" to create custom tasks</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </TabsContent>
                   <TabsContent value="tags">
                       <div className="flex gap-2 flex-wrap">
@@ -141,6 +189,17 @@ export function AIInsightPanel() {
               </Tabs>
             </CardContent>
           </Card>
+          
+          {/* Task Preview Modal */}
+          {selectedItem && (
+            <TaskPreviewModal
+              isOpen={showTaskPreview}
+              onClose={() => setShowTaskPreview(false)}
+              knowledgeItem={selectedItem}
+              onConfirm={handleConfirmTasks}
+              isLoading={isAddingTasks}
+            />
+          )}
         </motion.div>
       )}
       {!selectedItem && (
