@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { KnowledgeItem } from "@/lib/types";
 import { TaskPreviewModal } from "./TaskPreviewModal";
+import { addKnowledgeHubTasksAction } from "@/lib/actions/knowledge-hub.actions";
+import { useToast } from "@/hooks/use-toast";
 
 interface SmartTaskGeneratorProps {
   knowledgeItem: KnowledgeItem;
@@ -25,6 +27,8 @@ interface SmartTaskGeneratorProps {
 export function SmartTaskGenerator({ knowledgeItem, onTasksAdded }: SmartTaskGeneratorProps) {
   const [showPreview, setShowPreview] = useState(false);
   const [generatedTasks, setGeneratedTasks] = useState(knowledgeItem.tasks);
+  const [isAdding, setIsAdding] = useState(false);
+  const { toast } = useToast();
 
   // Analyze content type to customize tasks
   const analyzeContent = () => {
@@ -247,9 +251,53 @@ export function SmartTaskGenerator({ knowledgeItem, onTasksAdded }: SmartTaskGen
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}
         knowledgeItem={{ ...knowledgeItem, tasks: generatedTasks }}
-        onConfirm={(tasks) => {
-          onTasksAdded();
-          setShowPreview(false);
+        isLoading={isAdding}
+        onConfirm={async (tasks) => {
+          if (tasks.length === 0) return;
+          setIsAdding(true);
+          try {
+            const enhancedItem = {
+              ...knowledgeItem,
+              tasks: tasks.map(task => ({
+                id: task.id,
+                text: task.text,
+                completed: false,
+                deadline: task.deadline,
+                priority: task.priority,
+                durationMinutes: task.durationMinutes,
+              }))
+            };
+            const result = await addKnowledgeHubTasksAction(enhancedItem);
+            if (result.success && result.details?.dashboardAppearance) {
+              toast({
+                title: "✅ Task Added!",
+                description: `"${result.details.taskText}" is now in your dashboard.`,
+                action: (
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('refresh-tasks', 'true');
+                      window.location.href = '/dashboard';
+                    }}
+                    className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm hover:bg-primary/90"
+                  >
+                    View Dashboard
+                  </button>
+                ),
+              });
+              onTasksAdded();
+              setShowPreview(false);
+            } else {
+              throw new Error(result.error || "Failed to add task.");
+            }
+          } catch (error) {
+            toast({
+              title: "Error",
+              description: error instanceof Error ? error.message : "An unknown error occurred.",
+              variant: "destructive",
+            });
+          } finally {
+            setIsAdding(false);
+          }
         }}
       />
     </Card>

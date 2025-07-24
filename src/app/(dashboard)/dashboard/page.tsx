@@ -102,6 +102,39 @@ export default function TasksPage() {
     }
   }, [status, router, refetchTasks]);
 
+  // Auto-refresh tasks when the page becomes visible or forced by localStorage flag
+  useEffect(() => {
+    const refreshData = () => {
+      if (status === 'authenticated') {
+        const shouldRefresh = localStorage.getItem('refresh-tasks');
+        if (shouldRefresh === 'true') {
+          console.log('🔄 Force refreshing tasks due to localStorage flag...');
+          localStorage.removeItem('refresh-tasks');
+          refetchTasks();
+        }
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden && status === 'authenticated') {
+        console.log('📋 Page became visible, refreshing tasks...');
+        refetchTasks();
+      }
+    };
+
+    // Initial check on mount
+    refreshData();
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Also listen for storage changes to catch updates from other tabs
+    window.addEventListener('storage', refreshData);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('storage', refreshData);
+    };
+  }, [refetchTasks, status]);
+
   const handleCreateTaskFromTimeline = useCallback((startTime: Date, duration: number) => {
     setEditingTask(null);
     setDefaultDateForNewTask(null);

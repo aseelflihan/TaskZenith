@@ -213,6 +213,12 @@ export async function getTasksForUser(userId: string): Promise<Task[]> {
 
 export async function addTask(userId: string, taskData: TaskFormData): Promise<{ taskId?: string; error?: string }> {
   try {
+    console.log('📋 =============================================================');
+    console.log('📋 addTask() called from Knowledge Hub');
+    console.log('📋 UserId:', userId);
+    console.log('📋 TaskData:', JSON.stringify(taskData, null, 2));
+    console.log('📋 =============================================================');
+    
     const tasksRef = adminDb.collection("tasks");
     if (!userId) return { error: "User ID is required" };
     if (!taskData.text) return { error: "Task text is required" };
@@ -248,11 +254,19 @@ export async function addTask(userId: string, taskData: TaskFormData): Promise<{
       updatedAt: new Date().toISOString()
     };
 
+    console.log('📋 Final task object to be saved:', JSON.stringify(newTask, null, 2));
+
     const docRef = await tasksRef.add(newTask);
+    console.log('📋 ✅ Task saved to Firestore with ID:', docRef.id);
+    
     revalidatePath('/');
+    revalidatePath('/dashboard');
+    console.log('📋 ✅ Paths revalidated for cache refresh');
+    
     return { taskId: docRef.id };
   } catch (error) {
-    console.error("[addTask] Error adding task:", error);
+    console.error("[addTask] ❌ Error adding task:", error);
+    console.error("[addTask] ❌ Error details:", error instanceof Error ? error.message : 'Unknown error');
     return { error: 'Failed to add task. Please try again.' };
   }
 }

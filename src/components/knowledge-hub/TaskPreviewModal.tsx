@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Edit3, Plus, Trash2, Check, X } from "lucide-react";
+import { Calendar, Clock, Edit3, Plus, Trash2, Check, X, Loader2 } from "lucide-react";
 import { KnowledgeItem } from "@/lib/types";
 
 interface TaskPreview {
@@ -51,92 +51,172 @@ export function TaskPreviewModal({
 }: TaskPreviewModalProps) {
   const [tasks, setTasks] = useState<TaskPreview[]>(() => {
     console.log('TaskPreviewModal initializing with knowledgeItem:', knowledgeItem.title);
+    console.log('KnowledgeItem full object:', knowledgeItem);
+    console.log('Original content:', knowledgeItem.originalContent);
     console.log('Initial tasks from knowledge item:', knowledgeItem.tasks);
     
-    // Convert tasks from Knowledge Item with enhancements
-    let initialTasks = knowledgeItem.tasks || [];
+    // ALWAYS generate a single smart task based on the content, ignore existing tasks
+    console.log('Generating fresh smart task based on current content...');
+    const generatedTasks = generateSmartTasksFromContent(knowledgeItem);
+    const singleTask = generatedTasks[0]; // Take the generated task
     
-    // If no tasks exist, generate smart tasks based on content
-    if (initialTasks.length === 0) {
-      console.log('No existing tasks found, generating smart tasks...');
-      initialTasks = generateSmartTasksFromContent(knowledgeItem);
-    }
-    
-    const processedTasks = initialTasks.map((task, index) => ({
-      id: task.id || crypto.randomUUID(),
-      text: enhanceTaskText(task.text, knowledgeItem),
+    const processedTask: TaskPreview = {
+      id: singleTask.id,
+      text: singleTask.text,
       selected: true,
-      priority: determinePriority(task.text, knowledgeItem),
-      durationMinutes: estimateDuration(task.text),
-      deadline: extractDeadline(task.text, knowledgeItem),
-    }));
+      priority: determinePriority(singleTask.text, knowledgeItem),
+      durationMinutes: estimateDuration(singleTask.text),
+      deadline: extractDeadline(singleTask.text, knowledgeItem),
+    };
     
-    console.log('Processed tasks for modal:', processedTasks);
-    return processedTasks;
+    console.log('Processed single task for modal:', processedTask);
+    return [processedTask]; // Always return array with ONE task only
   });
 
-  // Generate smart tasks automatically if none exist
+  // Generate smart tasks automatically if none exist - ALWAYS SINGLE TASK
   function generateSmartTasksFromContent(item: KnowledgeItem): Array<{id: string, text: string, completed: boolean}> {
     const content = `${item.title} ${item.summary} ${item.originalContent || ''} ${item.tags.join(' ')}`;
-    const smartTasks = [];
     
-    const isEvent = item.tags.some(tag => 
-      /event|حدث|فعالية|مؤتمر|conference|seminar|workshop|bootcamp|festival/i.test(tag)
-    );
+    console.log('Generating task from content:', content.substring(0, 200));
     
-    const isAcademic = item.tags.some(tag =>
-      /academic|أكاديمي|university|جامعة|course|دورة|study|دراسة/i.test(tag)
-    );
+    // Clean up the title by removing "Advertisement" and other unnecessary suffixes
+    const cleanTitle = item.title
+      .replace(/\s*Advertisement\s*$/i, '')
+      .replace(/\s*\[.*?\]\s*$/g, '')
+      .replace(/\s*\(.*?\)\s*$/g, '')
+      .trim();
     
-    if (isEvent) {
-      // Single event task - most events need just one main task
-      smartTasks.push({
-        id: crypto.randomUUID(),
-        text: `Attend: ${item.title}`,
-        completed: false
-      });
-    } else if (isAcademic) {
-      // Single academic task
-      smartTasks.push({
-        id: crypto.randomUUID(),
-        text: `Complete: ${item.title}`,
-        completed: false
-      });
-    } else {
-      // Single general task
-      smartTasks.push({
-        id: crypto.randomUUID(),
-        text: `Review: ${item.title}`,
-        completed: false
-      });
+    // Determine the single main task based on content type
+    let taskText = '';
+    
+    // Check for registration/enrollment patterns first
+    if (/register|registration|enroll|enrollment|apply|application/gi.test(content)) {
+      if (/bootcamp|course|program|workshop|training|class/gi.test(content)) {
+        const eventMatch = content.match(/([\w\s]+?)(?:\s+(?:bootcamp|course|program|workshop|training|class))/gi);
+        if (eventMatch) {
+          const eventName = eventMatch[0].trim();
+          taskText = `Register for ${eventName}`;
+        } else {
+          taskText = `Register for ${cleanTitle}`;
+        }
+      } else {
+        taskText = `Complete registration: ${cleanTitle}`;
+      }
+    }
+    // Check for event/course attendance patterns
+    else if (/attend|join|participate|bootcamp|course|workshop|training|class|seminar|webinar/gi.test(content)) {
+      const eventMatch = content.match(/([\w\s]+?)(?:\s+(?:bootcamp|course|program|workshop|training|class|seminar|webinar))/gi);
+      if (eventMatch) {
+        const eventName = eventMatch[0].trim();
+        taskText = `Attend ${eventName}`;
+      } else {
+        taskText = `Attend: ${cleanTitle}`;
+      }
+    }
+    // Check for assignment/homework patterns
+    else if (/assignment|homework|project|essay|report|submission|due/gi.test(content)) {
+      taskText = `Complete assignment: ${cleanTitle}`;
+    }
+    // Check for exam/test patterns
+    else if (/exam|test|quiz|assessment|evaluation/gi.test(content)) {
+      taskText = `Prepare for exam: ${cleanTitle}`;
+    }
+    // Check for meeting patterns
+    else if (/meeting|appointment|call|conference|discussion/gi.test(content)) {
+      taskText = `Attend meeting: ${cleanTitle}`;
+    }
+    // Check for deadline/due date patterns
+    else if (/deadline|due|submit|delivery|complete by/gi.test(content)) {
+      taskText = `Complete task: ${cleanTitle}`;
+    }
+    // Event patterns from tags or content
+    else {
+      const isEvent = item.tags.some(tag => 
+        /event|حدث|فعالية|مؤتمر|conference|seminar|workshop|bootcamp|festival/i.test(tag)
+      ) || /festival|event|conference|seminar|workshop|meeting/i.test(content);
+      
+      const isAcademic = item.tags.some(tag =>
+        /academic|أكاديمي|university|جامعة|course|دورة|study|دراسة|research|methodology/i.test(tag)
+      ) || /research|methodology|academic|study|university/i.test(content);
+      
+      if (isEvent) {
+        if (/festival|مهرجان|celebration|احتفال/i.test(content)) {
+          taskText = `Participate in festival: ${cleanTitle}`;
+        } else if (/meeting|اجتماع|session|جلسة/i.test(content)) {
+          taskText = `Attend meeting: ${cleanTitle}`;
+        } else if (/workshop|ورشة|training|تدريب/i.test(content)) {
+          taskText = `Participate in workshop: ${cleanTitle}`;
+        } else if (/conference|مؤتمر|summit|قمة/i.test(content)) {
+          taskText = `Attend conference: ${cleanTitle}`;
+        } else if (/seminar|ندوة|lecture|محاضرة/i.test(content)) {
+          taskText = `Attend seminar: ${cleanTitle}`;
+        } else {
+          taskText = `Attend event: ${cleanTitle}`;
+        }
+      } else if (isAcademic) {
+        if (/research/i.test(content)) {
+          taskText = `Review research: ${cleanTitle}`;
+        } else {
+          taskText = `Complete academic work: ${cleanTitle}`;
+        }
+      } else {
+        taskText = `Review: ${cleanTitle}`;
+      }
     }
     
-    return smartTasks;
+    console.log('Generated task text:', taskText);
+    
+    // Return only ONE task
+    return [{
+      id: crypto.randomUUID(),
+      text: taskText,
+      completed: false
+    }];
   }
 
   const [editingTask, setEditingTask] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
 
-  // Enhance task text based on content type
+  // Enhance task text based on content type - for single comprehensive task
   function enhanceTaskText(originalText: string, item: KnowledgeItem): string {
+    const content = `${item.title} ${item.summary} ${item.originalContent || ''}`.toLowerCase();
+    
     const isEvent = item.tags.some(tag => 
-      /event|حدث|فعالية|مؤتمر|conference|seminar|workshop|bootcamp/i.test(tag)
+      /event|حدث|فعالية|مؤتمر|conference|seminar|workshop|bootcamp|festival/i.test(tag)
     );
     
+    const isMeeting = /meeting|اجتماع|session|جلسة/i.test(content);
+    const isWorkshop = /workshop|ورشة|training|تدريب/i.test(content);
+    const isConference = /conference|مؤتمر|summit|قمة/i.test(content);
+    const isSeminar = /seminar|ندوة|lecture|محاضرة/i.test(content);
+    const isFestival = /festival|مهرجان|celebration|احتفال/i.test(content);
+    const isAcademic = item.tags.some(tag => /academic|أكاديمي|university|جامعة/i.test(tag));
+    
+    // Create comprehensive single task based on type
     if (isEvent) {
-      // Enhance event-related tasks
-      if (/register|تسجيل|registration/i.test(originalText)) {
-        return `Register for: ${item.title}`;
+      if (isMeeting) {
+        return `Attend meeting: ${item.title}`;
+      } else if (isWorkshop) {
+        return `Participate in workshop: ${item.title}`;
+      } else if (isConference) {
+        return `Attend conference: ${item.title}`;
+      } else if (isSeminar) {
+        return `Attend seminar: ${item.title}`;
+      } else if (isFestival) {
+        return `Participate in festival: ${item.title}`;
+      } else {
+        return `Attend event: ${item.title}`;
       }
-      if (/attend|حضور|participate|شارك/i.test(originalText)) {
-        return `Attend: ${item.title}`;
-      }
-      if (/prepare|تحضير|ready/i.test(originalText)) {
-        return `Prepare for: ${item.title}`;
+    } else if (isAcademic) {
+      return `Complete academic work: ${item.title}`;
+    } else {
+      // Check if original text is already good, otherwise enhance it
+      if (originalText.includes(item.title)) {
+        return originalText;
+      } else {
+        return `Complete task: ${item.title}`;
       }
     }
-    
-    return originalText;
   }
 
   // Determine priority based on task type
@@ -167,129 +247,247 @@ export function TaskPreviewModal({
       taskText
     ].join(' ');
     
-    console.log('Extracting deadline from content:', allContent);
+    console.log('=== DATE EXTRACTION DEBUG ===');
+    console.log('Item title:', item.title);
+    console.log('Item originalContent:', item.originalContent);
+    console.log('Full content for extraction:', allContent);
     
-    // Enhanced date patterns for better extraction
+    // Enhanced date patterns with more specific matching
     const datePatterns = [
+      // Specific emoji date format: "📅 September 7th, 2025"
+      /📅\s*(\w+)\s+(\d{1,2})(st|nd|rd|th)?,?\s*(\d{4})/gi,
+      
+      // Date ranges like "8 - 14 July 2025" or "19 20 July 2025"
+      /(\d{1,2})\s*[-–]\s*(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})/gi,
+      /(\d{1,2})\s+(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})/gi,
+      
+      // Single dates like "19 July 2025"
+      /(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})/gi,
+      
+      // Specific format: "September 7th, 2025" (without emoji)
+      /(\w+)\s+(\d{1,2})(st|nd|rd|th)?,?\s*(\d{4})/gi,
+      
+      // Month Day Year format
+      /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2}),?\s*(\d{4})/gi,
+      
+      // Short month format
+      /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\.?\s+(\d{1,2}),?\s*(\d{4})/gi,
+      
       // ISO format YYYY-MM-DD
-      /(\d{4}[-\/]\d{1,2}[-\/]\d{1,2})/g,
+      /(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/g,
       
-      // DD/MM/YYYY or MM/DD/YYYY
-      /(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/g,
-      
-      // Full month names with year
-      /(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s*\d{4}/gi,
-      
-      // Short month names
-      /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\.?\s+\d{1,2},?\s*\d{4}/gi,
-      
-      // Day Month Year format
-      /\d{1,2}\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}/gi,
-      
-      // Ordinal dates like "1st January 2025"
-      /\d{1,2}(st|nd|rd|th)\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}/gi,
-      
-      // Arabic month names
-      /(يناير|فبراير|مارس|أبريل|مايو|يونيو|يوليو|أغسطس|سبتمبر|أكتوبر|نوفمبر|ديسمبر)\s+\d{1,2}/g,
-      
-      // Time-specific patterns
-      /on\s+(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/gi,
-      /date:\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/gi,
-      /(\d{1,2})\/(\d{1,2})\/(\d{4})/g,
-      
-      // Event-specific patterns
-      /held\s+on\s+([^,\n.]+\d{4})/gi,
-      /will\s+be\s+on\s+([^,\n.]+\d{4})/gi,
-      /scheduled\s+for\s+([^,\n.]+\d{4})/gi,
-      /event\s+date[:\s]+([^,\n.]+\d{4})/gi,
+      // DD/MM/YYYY format (European)
+      /(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/g,
     ];
 
     let extractedDate: string | undefined;
 
-    for (const pattern of datePatterns) {
-      const matches = allContent.match(pattern);
-      if (matches && matches.length > 0) {
-        console.log('Found date matches:', matches);
+    // Month name mapping
+    const monthMap: { [key: string]: number } = {
+      'january': 1, 'jan': 1,
+      'february': 2, 'feb': 2,
+      'march': 3, 'mar': 3,
+      'april': 4, 'apr': 4,
+      'may': 5,
+      'june': 6, 'jun': 6,
+      'july': 7, 'jul': 7,
+      'august': 8, 'aug': 8,
+      'september': 9, 'sep': 9,
+      'october': 10, 'oct': 10,
+      'november': 11, 'nov': 11,
+      'december': 12, 'dec': 12
+    };
+
+    for (let i = 0; i < datePatterns.length; i++) {
+      const pattern = datePatterns[i];
+      pattern.lastIndex = 0; // Reset regex state
+      
+      let match;
+      while ((match = pattern.exec(allContent)) !== null) {
+        console.log(`Pattern ${i} found match:`, match);
         
-        for (const match of matches) {
-          try {
-            // Clean the match from prefixes
-            let cleanMatch = match.replace(/^(on|date:|held\s+on|will\s+be\s+on|scheduled\s+for|event\s+date[:\s]+)\s*/i, '').trim();
-            console.log('Trying to parse cleaned match:', cleanMatch);
+        try {
+          let day: number, month: number, year: number;
+          
+          if (i === 0) {
+            // Handle emoji date format: "📅 September 7th, 2025"
+            const monthName = match[1].toLowerCase();
+            day = parseInt(match[2]);
+            year = parseInt(match[4]);
+            month = monthMap[monthName];
             
-            let date: Date;
+            console.log('Emoji pattern - Month:', monthName, 'Day:', day, 'Year:', year, 'Month num:', month);
             
-            // Try different parsing strategies
-            
-            // Strategy 1: Direct parsing
-            date = new Date(cleanMatch);
-            if (!isNaN(date.getTime()) && date.getFullYear() >= 2024) {
-              extractedDate = date.toISOString().split('T')[0];
-              console.log('Successfully parsed with direct parsing:', extractedDate);
-              break;
-            }
-            
-            // Strategy 2: DD/MM/YYYY format
-            const ddmmyyyy = cleanMatch.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
-            if (ddmmyyyy) {
-              const [_, day, month, year] = ddmmyyyy;
-              date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
-              if (!isNaN(date.getTime()) && date.getFullYear() >= 2024) {
+            if (month && day && year && year >= new Date().getFullYear()) {
+              // Use UTC to avoid timezone issues that can shift the date by one day
+              const date = new Date(Date.UTC(year, month - 1, day));
+              if (!isNaN(date.getTime())) {
                 extractedDate = date.toISOString().split('T')[0];
-                console.log('Successfully parsed with DD/MM/YYYY strategy:', extractedDate);
+                console.log('Successfully parsed emoji date format:', extractedDate);
                 break;
               }
             }
+          } else if (i === 1) {
+            // Handle date ranges like "8 - 14 July 2025" - use the end date
+            const startDay = parseInt(match[1]);
+            const endDay = parseInt(match[2]);
+            const monthName = match[3].toLowerCase();
+            year = parseInt(match[4]);
+            month = monthMap[monthName];
             
-            // Strategy 3: MM/DD/YYYY format (US style)
-            const mmddyyyy = cleanMatch.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
-            if (mmddyyyy) {
-              const [_, month, day, year] = mmddyyyy;
-              date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
-              if (!isNaN(date.getTime()) && date.getFullYear() >= 2024) {
+            // Use the end date of the range
+            day = endDay;
+            
+            console.log('Date range pattern - Start:', startDay, 'End:', endDay, 'Month:', monthName, 'Year:', year);
+            
+            if (month && day && year && year >= new Date().getFullYear()) {
+              const date = new Date(Date.UTC(year, month - 1, day));
+              if (!isNaN(date.getTime())) {
                 extractedDate = date.toISOString().split('T')[0];
-                console.log('Successfully parsed with MM/DD/YYYY strategy:', extractedDate);
+                console.log('Successfully parsed date range format:', extractedDate);
                 break;
               }
             }
+          } else if (i === 2) {
+            // Handle "19 20 July 2025" format - use the later date
+            const firstDay = parseInt(match[1]);
+            const secondDay = parseInt(match[2]);
+            const monthName = match[3].toLowerCase();
+            year = parseInt(match[4]);
+            month = monthMap[monthName];
             
-            // Strategy 4: YYYY-MM-DD format
-            const yyyymmdd = cleanMatch.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-            if (yyyymmdd) {
-              const [_, year, month, day] = yyyymmdd;
-              date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
-              if (!isNaN(date.getTime()) && date.getFullYear() >= 2024) {
+            // Use the later date
+            day = Math.max(firstDay, secondDay);
+            
+            console.log('Two days pattern - Day1:', firstDay, 'Day2:', secondDay, 'Using:', day, 'Month:', monthName, 'Year:', year);
+            
+            if (month && day && year && year >= new Date().getFullYear()) {
+              const date = new Date(Date.UTC(year, month - 1, day));
+              if (!isNaN(date.getTime())) {
                 extractedDate = date.toISOString().split('T')[0];
-                console.log('Successfully parsed with YYYY-MM-DD strategy:', extractedDate);
+                console.log('Successfully parsed two days format:', extractedDate);
                 break;
               }
             }
+          } else if (i === 3) {
+            // Handle "19 July 2025" format
+            day = parseInt(match[1]);
+            const monthName = match[2].toLowerCase();
+            year = parseInt(match[3]);
+            month = monthMap[monthName];
             
-          } catch (e) {
-            console.log('Failed to parse date:', cleanMatch, e);
-            continue;
+            console.log('Single day pattern - Day:', day, 'Month:', monthName, 'Year:', year);
+            
+            if (month && day && year && year >= new Date().getFullYear()) {
+              const date = new Date(Date.UTC(year, month - 1, day));
+              if (!isNaN(date.getTime())) {
+                extractedDate = date.toISOString().split('T')[0];
+                console.log('Successfully parsed single day format:', extractedDate);
+                break;
+              }
+            }
+          } else if (i === 4) {
+            // Handle regular format: "September 7th, 2025"
+            const monthName = match[1].toLowerCase();
+            day = parseInt(match[2]);
+            year = parseInt(match[4]);
+            month = monthMap[monthName];
+            
+            console.log('Regular pattern - Month:', monthName, 'Day:', day, 'Year:', year, 'Month num:', month);
+            
+            if (month && day && year && year >= new Date().getFullYear()) {
+              // Use UTC to avoid timezone issues that can shift the date by one day
+              const date = new Date(Date.UTC(year, month - 1, day));
+              if (!isNaN(date.getTime())) {
+                extractedDate = date.toISOString().split('T')[0];
+                console.log('Successfully parsed regular date format:', extractedDate);
+                break;
+              }
+            }
+          } else if (i === 5 || i === 6) {
+            // Handle full/short month name formats
+            const monthName = match[1].toLowerCase();
+            day = parseInt(match[2]);
+            year = parseInt(match[3]);
+            month = monthMap[monthName];
+            
+            console.log('Month name pattern - Month:', monthName, 'Day:', day, 'Year:', year, 'Month num:', month);
+            
+            if (month && day && year && year >= new Date().getFullYear()) {
+              // Use UTC to avoid timezone issues that can shift the date by one day
+              const date = new Date(Date.UTC(year, month - 1, day));
+              if (!isNaN(date.getTime())) {
+                extractedDate = date.toISOString().split('T')[0];
+                console.log('Successfully parsed month name format:', extractedDate);
+                break;
+              }
+            }
+          } else if (i === 7) {
+            // YYYY-MM-DD format
+            year = parseInt(match[1]);
+            month = parseInt(match[2]);
+            day = parseInt(match[3]);
+            
+            if (year >= new Date().getFullYear() && month <= 12 && day <= 31) {
+              // Use UTC to avoid timezone issues that can shift the date by one day
+              const date = new Date(Date.UTC(year, month - 1, day));
+              if (!isNaN(date.getTime())) {
+                extractedDate = date.toISOString().split('T')[0];
+                console.log('Successfully parsed YYYY-MM-DD format:', extractedDate);
+                break;
+              }
+            }
+          } else if (i === 8) {
+            // DD/MM/YYYY format
+            day = parseInt(match[1]);
+            month = parseInt(match[2]);
+            year = parseInt(match[3]);
+            
+            if (year >= new Date().getFullYear() && month <= 12 && day <= 31) {
+              // Use UTC to avoid timezone issues that can shift the date by one day
+              const date = new Date(Date.UTC(year, month - 1, day));
+              if (!isNaN(date.getTime())) {
+                extractedDate = date.toISOString().split('T')[0];
+                console.log('Successfully parsed DD/MM/YYYY format:', extractedDate);
+                break;
+              }
+            }
           }
+        } catch (e) {
+          console.log('Failed to parse date:', match[0], e);
+          continue;
         }
-        if (extractedDate) break;
       }
+      
+      if (extractedDate) break;
     }
 
-    // If no date found, check if it's an upcoming event and set a default future date
+    // If no date found, set intelligent defaults based on task type
     if (!extractedDate) {
+      console.log('No date found in content, setting dynamic default...');
       const isEvent = item.tags.some(tag => 
         /event|حدث|فعالية|مؤتمر|conference|seminar|workshop|bootcamp|festival/i.test(tag)
       );
       
+      const currentDate = new Date();
+      
       if (isEvent) {
-        // Set a default date 1 week from now for events without specific dates
-        const futureDate = new Date();
-        futureDate.setDate(futureDate.getDate() + 7);
+        // For events, set a date 2 weeks from now
+        const futureDate = new Date(currentDate);
+        futureDate.setDate(currentDate.getDate() + 14);
         extractedDate = futureDate.toISOString().split('T')[0];
-        console.log('No specific date found for event, setting default future date:', extractedDate);
+        console.log('No specific date found for event, setting dynamic future date:', extractedDate);
+      } else {
+        // For other tasks, set a date 1 week from now
+        const futureDate = new Date(currentDate);
+        futureDate.setDate(currentDate.getDate() + 7);
+        extractedDate = futureDate.toISOString().split('T')[0];
+        console.log('No specific date found, setting dynamic default date:', extractedDate);
       }
     }
 
     console.log('Final extracted date:', extractedDate);
+    console.log('=== END DATE EXTRACTION DEBUG ===');
     return extractedDate;
   }
 
@@ -378,7 +576,10 @@ export function TaskPreviewModal({
           {/* Source Information */}
           <div className="p-4 bg-muted/50 rounded-lg">
             <h4 className="font-semibold text-sm mb-2">Source:</h4>
-            <p className="text-sm">{knowledgeItem.title}</p>
+            <p className="text-sm font-medium">{knowledgeItem.title}</p>
+            {knowledgeItem.summary && (
+              <p className="text-xs text-muted-foreground mt-1">{knowledgeItem.summary}</p>
+            )}
             <div className="flex flex-wrap gap-1 mt-2">
               {knowledgeItem.tags.slice(0, 3).map(tag => (
                 <Badge key={tag} variant="secondary" className="text-xs">
@@ -386,14 +587,22 @@ export function TaskPreviewModal({
                 </Badge>
               ))}
             </div>
+            {/* Debug info */}
+            <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs">
+              <strong>Debug Info:</strong><br/>
+              • Item ID: {knowledgeItem.id || 'No ID'}<br/>
+              • Original Content Preview: {(knowledgeItem.originalContent || '').substring(0, 100)}...<br/>
+              • Generated Task: {tasks[0]?.text || 'None'}<br/>
+              • Task Deadline: {tasks[0]?.deadline || 'None'}<br/>
+              • Task Priority: {tasks[0]?.priority || 'None'}<br/>
+              • Task Duration: {tasks[0]?.durationMinutes || 'None'} minutes
+            </div>
           </div>
 
           {/* Tasks */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-semibold">Suggested Tasks ({tasks.length})</h4>
-              {console.log('Rendering tasks section, current tasks.length:', tasks.length)}
-              {console.log('Current tasks state:', tasks)}
               <Button
                 variant="outline"
                 size="sm"
@@ -572,7 +781,7 @@ export function TaskPreviewModal({
             ) : (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                Add {selectedTasks.length} Task{selectedTasks.length !== 1 ? 's' : ''}
+                Add {selectedTasks.length} Task{selectedTasks.length !== 1 ? 's' : ''} to Dashboard
               </>
             )}
           </Button>

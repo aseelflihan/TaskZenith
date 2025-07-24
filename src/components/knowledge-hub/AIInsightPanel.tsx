@@ -39,10 +39,8 @@ export function AIInsightPanel() {
 
   const handleConfirmTasks = async (selectedTasks: any[]) => {
     if (!selectedItem) return;
-    
     setIsAddingTasks(true);
     try {
-      // Convert selected tasks to required format
       const enhancedItem = {
         ...selectedItem,
         tasks: selectedTasks.map(task => ({
@@ -57,24 +55,37 @@ export function AIInsightPanel() {
 
       const result = await addKnowledgeHubTasksAction(enhancedItem);
 
-      if (result.success) {
+      if (result.success && result.details?.dashboardAppearance) {
         toast({
-          title: "Tasks added successfully",
-          description: `${selectedTasks.length} task${selectedTasks.length !== 1 ? 's' : ''} added to your main task list.`,
+          title: "✅ Task Added Successfully!",
+          description: `"${result.details.taskText}" is now in your dashboard.`,
+          duration: 6000,
+          action: (
+            <button
+              onClick={() => {
+                // Use a more reliable way to refresh tasks on the dashboard
+                localStorage.setItem('refresh-tasks', 'true');
+                window.location.href = '/dashboard';
+              }}
+              className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm hover:bg-primary/90"
+            >
+              Go to Dashboard
+            </button>
+          ),
         });
         setShowTaskPreview(false);
       } else {
         toast({
-          title: "Error adding tasks",
-          description: result.error || "Failed to add tasks.",
+          title: "Error Adding Task",
+          description: result.error || "Could not verify task addition. Please check your dashboard manually.",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error adding tasks:", error);
       toast({
-        title: "Unexpected error",
-        description: "An error occurred while adding tasks.",
+        title: "Unexpected Error",
+        description: "An error occurred while adding the task.",
         variant: "destructive",
       });
     } finally {
