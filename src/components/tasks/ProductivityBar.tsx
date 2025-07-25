@@ -19,13 +19,13 @@ interface ProductivityBarProps {
 }
 
 const StatCard = ({ title, icon, children, className }: { title: string, icon: React.ReactNode, children: React.ReactNode, className?: string }) => (
-  <Card className={cn("bg-card/70 backdrop-blur-sm", className)}>
+  <Card className={cn("bg-card/70 backdrop-blur-sm dashboard-card", className)}>
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <CardTitle className="text-sm font-medium break-anywhere">{title}</CardTitle>
       {icon}
     </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">
+    <CardContent className="card-content">
+      <div className="text-2xl font-bold break-anywhere">
         {children}
       </div>
     </CardContent>
@@ -97,8 +97,8 @@ export function ProductivityBar({ tasks, onStartNextTask }: ProductivityBarProps
             <Sparkles className="h-6 w-6 mr-3 text-primary" />
             Your Daily Dashboard
         </h2>
-        {/* RESPONSIVE CONTAINER: Grid on mobile, Flex on desktop */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex gap-4">
+        {/* RESPONSIVE CONTAINER: Grid layout that adjusts to screen size */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 auto-rows-fr">
             <StatCard title="Tasks Completed Today" icon={<CheckCircle className="h-4 w-4 text-muted-foreground" />}>
                 {completedToday} / {totalToday}
             </StatCard>
@@ -115,13 +115,16 @@ export function ProductivityBar({ tasks, onStartNextTask }: ProductivityBarProps
             </StatCard>
 
             {nextTask && nextTaskParent && (
-                <Card className="sm:col-span-2 lg:flex-1 bg-primary/10 border-primary">
+                <Card className="md:col-span-2 xl:col-span-1 bg-primary/10 border-primary dashboard-card">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium">Next Up: <span className="font-bold">{formatTime(parseISO(nextTask.scheduledStartTime!), 'h:mm a')}</span></CardTitle>
                     </CardHeader>
-                    <CardContent className="flex items-center justify-between">
-                        <p className="text-lg font-semibold truncate" title={nextTask.text}>{nextTask.text}</p>
-                        <Button size="sm" onClick={() => onStartNextTask(nextTask, nextTaskParent)}>
+                    <CardContent className="space-y-3 card-content">
+                        <p className="text-lg font-semibold line-clamp-2" 
+                           title={nextTask.text}>
+                           {nextTask.text}
+                        </p>
+                        <Button size="sm" onClick={() => onStartNextTask(nextTask, nextTaskParent)} className="w-full">
                             <Play className="h-4 w-4 mr-2" />
                             Start
                         </Button>
