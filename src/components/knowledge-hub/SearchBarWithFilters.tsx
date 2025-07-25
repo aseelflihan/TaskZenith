@@ -32,7 +32,7 @@ export default function SearchBarWithFilters({ view, setView, searchTerm, setSea
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          {allTags.map(tag => (
+          {allTags.map((tag: string) => (
             <DropdownMenuCheckboxItem
               key={tag}
               checked={filterTags.includes(tag)}

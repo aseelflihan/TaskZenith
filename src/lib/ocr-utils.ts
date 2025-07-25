@@ -46,16 +46,10 @@ export async function advancedOCR(imageBuffer: Buffer, mimeType: string): Promis
     
     // Create worker without external URLs - use default configuration
     console.log('🔄 Creating Tesseract worker with default configuration...');
-    const worker = await Tesseract.createWorker(['eng'], 1, {
-      // Remove all external URLs to avoid Next.js worker path restrictions
-      cacheMethod: 'none',
-      gzip: false,
-      logger: (m: any) => {
-        if (m.status === 'recognizing text') {
-          console.log(`📊 OCR Progress: ${Math.round(m.progress * 100)}%`);
-        }
-      }
-    });
+    const worker = await Tesseract.createWorker();
+    await worker.load();
+    await worker.loadLanguage('eng');
+    await worker.initialize('eng');
     
     console.log('✅ Worker created, starting text recognition...');
 

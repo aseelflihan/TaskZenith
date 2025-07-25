@@ -1,12 +1,7 @@
 import { create } from 'zustand';
-import { KnowledgeItem } from '@/lib/types';
+import { KnowledgeItem, SelectedContentState } from '@/types/custom';
 
-interface SelectedContentState {
-  selectedItem: KnowledgeItem | null;
-  setSelectedItem: (item: KnowledgeItem | null) => void;
-}
-
-export const useSelectedContentStore = create<SelectedContentState>((set) => ({
+export const useSelectedContentStore = create<SelectedContentState>((set: any) => ({
   selectedItem: null,
-  setSelectedItem: (item) => set({ selectedItem: item }),
+  setSelectedItem: (item: KnowledgeItem | null) => set({ selectedItem: item }),
 }));

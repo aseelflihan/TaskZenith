@@ -1,54 +1,39 @@
 import { create } from 'zustand';
-import { KnowledgeItem } from '@/lib/types';
+import { KnowledgeItem, KnowledgeHubState } from '@/types/custom';
 
-interface KnowledgeHubState {
-  items: KnowledgeItem[];
-  selectedItem: KnowledgeItem | null;
-  isLoading: boolean;
-  filterTags: string[];
-  allTags: string[];
-  setItems: (items: KnowledgeItem[]) => void;
-  addItem: (item: KnowledgeItem) => void;
-  setSelectedItem: (item: KnowledgeItem | null) => void;
-  toggleFilterTag: (tag: string) => void;
-  clearFilterTags: () => void;
-  fetchItems: () => Promise<void>;
-}
-
-export const useKnowledgeHubStore = create<KnowledgeHubState>((set) => ({
+export const useKnowledgeHubStore = create<KnowledgeHubState>((set: any, get: any) => ({
   items: [],
   selectedItem: null,
-  isLoading: true,
+  searchTerm: '',
   filterTags: [],
   allTags: [],
-  setItems: (items) => {
-    const allTags = [...new Set(items.flatMap(item => item.tags))];
+  setItems: (items: KnowledgeItem[]) => {
+    const allTags = [...new Set(items.flatMap((item: KnowledgeItem) => item.tags))];
     set({ items, allTags });
   },
-  addItem: (item) => set((state) => {
+  addItem: (item: KnowledgeItem) => set((state: KnowledgeHubState) => {
     const newItems = [item, ...state.items];
-    const allTags = [...new Set(newItems.flatMap(i => i.tags))];
+    const allTags = [...new Set(newItems.flatMap((i: KnowledgeItem) => i.tags))];
     return { items: newItems, allTags };
   }),
-  setSelectedItem: (item) => set({ selectedItem: item }),
-  toggleFilterTag: (tag) =>
-    set((state) => {
+  setSelectedItem: (item: KnowledgeItem | null) => set({ selectedItem: item }),
+  setSearchTerm: (term: string) => set({ searchTerm: term }),
+  toggleFilterTag: (tag: string) =>
+    set((state: KnowledgeHubState) => {
       const newFilterTags = state.filterTags.includes(tag)
-        ? state.filterTags.filter((t) => t !== tag)
+        ? state.filterTags.filter((t: string) => t !== tag)
         : [...state.filterTags, tag];
       return { filterTags: newFilterTags };
     }),
-  clearFilterTags: () => set({ filterTags: [] }),
+  clearFilters: () => set({ filterTags: [], searchTerm: '' }),
   fetchItems: async () => {
-    set({ isLoading: true });
     try {
       const response = await fetch('/api/knowledge');
       const data: KnowledgeItem[] = await response.json();
-      const allTags = [...new Set(data.flatMap((item) => item.tags))];
-      set({ items: data, allTags, isLoading: false });
+      const allTags = [...new Set(data.flatMap((item: KnowledgeItem) => item.tags))];
+      set({ items: data, allTags });
     } catch (error) {
       console.error("Failed to fetch knowledge items:", error);
-      set({ isLoading: false });
     }
   },
 }));

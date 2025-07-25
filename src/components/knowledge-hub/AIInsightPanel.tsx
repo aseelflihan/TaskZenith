@@ -20,7 +20,7 @@ export function AIInsightPanel() {
   const [isAddingTasks, setIsAddingTasks] = useState(false);
   const [showTaskPreview, setShowTaskPreview] = useState(false);
 
-  const allTags = [...new Set(items.flatMap(item => item.tags))].sort();
+  const allTags = [...new Set(items.flatMap((item: any) => item.tags))].sort();
   
   const isLink = selectedItem?.originalContent && (selectedItem.originalContent.startsWith('http') || selectedItem.originalContent.startsWith('www'));
   const isFile = selectedItem?.source === 'File Upload';
@@ -138,7 +138,7 @@ export function AIInsightPanel() {
                           Tasks extracted from content:
                         </h4>
                         <ul className="space-y-3">
-                          {selectedItem.tasks.map((task) => (
+                          {selectedItem.tasks.map((task: any) => (
                             <li key={task.id} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
                               <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                               <span className="flex-grow text-sm">{task.text}</span>
@@ -158,14 +158,14 @@ export function AIInsightPanel() {
                   </TabsContent>
                   <TabsContent value="tags">
                       <div className="flex gap-2 flex-wrap">
-                          {allTags.map((tag) => (
+                          {(allTags as string[]).map((tag: string) => (
                               <Badge
-                                  key={tag}
+                                  key={tag as React.Key}
                                   variant={filterTags.includes(tag) ? "default" : "secondary"}
                                   className="cursor-pointer hover:bg-primary/80"
                                   onClick={() => toggleFilterTag(tag)}
                               >
-                                  {tag}
+                                  {tag as React.ReactNode}
                               </Badge>
                           ))}
                       </div>

@@ -429,7 +429,9 @@ ${textContent.trim()}
     // Process raw text result
     if (rawResult.status === 'fulfilled') {
       extractedText = rawResult.value.value || '';
-      messages = rawResult.value.messages?.map((msg: any) => msg.message) || [];
+      // Handle messages property safely
+      const resultValue = rawResult.value as any;
+      messages = resultValue.messages?.map((msg: any) => msg.message) || [];
       console.log(`Raw text extracted: ${extractedText.length} characters`);
     }
     
@@ -564,7 +566,7 @@ async function extractTextFromSpreadsheet(buffer: Buffer): Promise<string> {
     
     console.log(`Spreadsheet loaded. Sheets: ${workbook.SheetNames.join(', ')}`);
     
-    workbook.SheetNames.forEach((sheetName, index) => {
+    workbook.SheetNames.forEach((sheetName: string, index: number) => {
       const worksheet = workbook.Sheets[sheetName];
       
       // Get the range of the worksheet

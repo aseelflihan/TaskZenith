@@ -5,15 +5,16 @@ import { authOptions } from '@/lib/auth';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const item = getItem(params.id);
+    const item = getItem(id);
     
     if (!item) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });

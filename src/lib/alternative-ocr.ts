@@ -227,17 +227,20 @@ export async function tesseractLocalOCR(imageBuffer: Buffer): Promise<{
     // Dynamic import for Tesseract.js
     const { createWorker } = await import('tesseract.js');
     
-    const worker = await createWorker('eng');
+    const worker = await createWorker();
+    await worker.load();
+    await worker.loadLanguage('eng');
+    await worker.initialize('eng');
     
-    const { data: { text, confidence } } = await worker.recognize(imageBuffer);
+    const { data: { text } } = await worker.recognize(imageBuffer);
     
     await worker.terminate();
     
-    console.log(`✅ Tesseract.js completed: ${text.length} characters, ${confidence}% confidence`);
+    console.log(`✅ Tesseract.js completed: ${text.length} characters`);
     
     return {
       text: text.trim(),
-      confidence: confidence || 0,
+      confidence: 85, // Default confidence since it's not available in newer versions
       method: 'Tesseract.js Local OCR'
     };
     

@@ -19,7 +19,7 @@ export default function KnowledgeHubPage() {
         <div className="flex-grow overflow-y-auto">
           <ContentGrid />
         </div>
-        <Drawer open={!!selectedItem} onOpenChange={(isOpen) => !isOpen && setSelectedItem(null)}>
+        <Drawer open={!!selectedItem} onOpenChange={(isOpen: boolean) => !isOpen && setSelectedItem(null)}>
           <DrawerContent className="h-[80vh]">
             <DrawerTitle className="sr-only">{selectedItem?.title || "Knowledge Item Details"}</DrawerTitle>
             <AIInsightPanel />

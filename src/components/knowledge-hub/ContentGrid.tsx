@@ -11,24 +11,23 @@ import { X } from "lucide-react";
 import SearchBarWithFilters from "./SearchBarWithFilters";
 
 export function ContentGrid() {
-  const { items, isLoading, selectedItem, setSelectedItem, fetchItems, filterTags, toggleFilterTag, clearFilterTags } = useKnowledgeHubStore();
-  const [searchTerm, setSearchTerm] = useState("");
+  const { items, selectedItem, setSelectedItem, fetchItems, filterTags, toggleFilterTag, clearFilters, searchTerm, setSearchTerm } = useKnowledgeHubStore();
   const [view, setView] = useState<'grid' | 'list'>('grid');
-
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
 
-  const filteredItems = items.filter(item => {
+  const filteredItems = items.filter((item: any) => {
     const matchesSearchTerm =
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.tldr.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+      item.tags.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesTags =
       filterTags.length === 0 ||
-      filterTags.some(filterTag => item.tags.includes(filterTag));
+      filterTags.some((filterTag: string) => item.tags.includes(filterTag));
 
     return matchesSearchTerm && matchesTags;
   });
@@ -54,7 +53,7 @@ export function ContentGrid() {
       {filterTags.length > 0 && (
         <div className="pb-4 border-b flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground">Filtering by:</span>
-          {filterTags.map(tag => (
+          {filterTags.map((tag: string) => (
             <Badge key={tag} variant="default">
               {tag}
               <Button variant="ghost" size="icon" className="h-4 w-4 ml-1" onClick={() => toggleFilterTag(tag)}>
@@ -62,12 +61,12 @@ export function ContentGrid() {
               </Button>
             </Badge>
           ))}
-          <Button variant="ghost" size="sm" onClick={clearFilterTags}>Clear all</Button>
+          <Button variant="ghost" size="sm" onClick={clearFilters}>Clear all</Button>
         </div>
       )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {filteredItems.length > 0 ? (
-            filteredItems.map((item) => (
+            filteredItems.map((item: any) => (
             <KnowledgeCard
               item={item}
               key={item.id}
