@@ -50,10 +50,21 @@ export function TaskPreviewModal({
   isLoading = false 
 }: TaskPreviewModalProps) {
   const [tasks, setTasks] = useState<TaskPreview[]>(() => {
-    console.log('TaskPreviewModal initializing with knowledgeItem:', knowledgeItem.title);
-    console.log('KnowledgeItem full object:', knowledgeItem);
-    console.log('Original content:', knowledgeItem.originalContent);
+    console.log('=== TaskPreviewModal INITIALIZATION DEBUG ===');
+    console.log('TaskPreviewModal initializing with knowledgeItem ID:', knowledgeItem.id);
+    console.log('TaskPreviewModal initializing with knowledgeItem Title:', knowledgeItem.title);
+    console.log('TaskPreviewModal initializing with Summary:', knowledgeItem.summary?.substring(0, 150));
+    console.log('TaskPreviewModal received full object:');
+    console.log(JSON.stringify({
+      id: knowledgeItem.id,
+      title: knowledgeItem.title,
+      summary: knowledgeItem.summary?.substring(0, 200),
+      tags: knowledgeItem.tags,
+      tasks: knowledgeItem.tasks
+    }, null, 2));
+    console.log('Original content preview:', knowledgeItem.originalContent?.substring(0, 200));
     console.log('Initial tasks from knowledge item:', knowledgeItem.tasks);
+    console.log('=== END INITIALIZATION DEBUG ===');
     
     // ALWAYS generate a single smart task based on the content, ignore existing tasks
     console.log('Generating fresh smart task based on current content...');
@@ -238,7 +249,7 @@ export function TaskPreviewModal({
 
   // Extract deadline from content with improved date parsing
   function extractDeadline(taskText: string, item: KnowledgeItem): string | undefined {
-    // Combine all available content for date extraction
+    // Combine all available content for date extraction - ONLY FROM SELECTED ITEM
     const allContent = [
       item.title,
       item.summary,
@@ -248,14 +259,21 @@ export function TaskPreviewModal({
     ].join(' ');
     
     console.log('=== DATE EXTRACTION DEBUG ===');
+    console.log('Item ID:', item.id);
     console.log('Item title:', item.title);
+    console.log('Item summary:', item.summary);
     console.log('Item originalContent:', item.originalContent);
+    console.log('Item tags:', item.tags);
+    console.log('Task text:', taskText);
     console.log('Full content for extraction:', allContent);
     
     // Enhanced date patterns with more specific matching
     const datePatterns = [
       // Specific emoji date format: "📅 September 7th, 2025"
       /📅\s*(\w+)\s+(\d{1,2})(st|nd|rd|th)?,?\s*(\d{4})/gi,
+      
+      // Date ranges like "July 8-14, 2025" (new pattern for month first)
+      /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})[-–]\s*(\d{1,2}),?\s*(\d{4})/gi,
       
       // Date ranges like "8 - 14 July 2025" or "19 20 July 2025"
       /(\d{1,2})\s*[-–]\s*(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})/gi,
@@ -281,6 +299,7 @@ export function TaskPreviewModal({
     ];
 
     let extractedDate: string | undefined;
+    let foundEmojiDate = false; // Track if we found a date with emoji (highest priority)
 
     // Month name mapping
     const monthMap: { [key: string]: number } = {
@@ -310,7 +329,7 @@ export function TaskPreviewModal({
           let day: number, month: number, year: number;
           
           if (i === 0) {
-            // Handle emoji date format: "📅 September 7th, 2025"
+            // Handle emoji date format: "📅 September 7th, 2025" - HIGHEST PRIORITY
             const monthName = match[1].toLowerCase();
             day = parseInt(match[2]);
             year = parseInt(match[4]);
@@ -323,11 +342,39 @@ export function TaskPreviewModal({
               const date = new Date(Date.UTC(year, month - 1, day));
               if (!isNaN(date.getTime())) {
                 extractedDate = date.toISOString().split('T')[0];
-                console.log('Successfully parsed emoji date format:', extractedDate);
-                break;
+                foundEmojiDate = true; // Mark that we found emoji date
+                console.log('Successfully parsed emoji date format (HIGH PRIORITY):', extractedDate);
+                break; // Break immediately for emoji dates
               }
             }
           } else if (i === 1) {
+            // Only process if no emoji date found yet
+            if (foundEmojiDate) continue;
+            
+            // Handle date ranges like "July 8-14, 2025" (month first format)
+            const monthName = match[1].toLowerCase();
+            const startDay = parseInt(match[2]);
+            const endDay = parseInt(match[3]);
+            year = parseInt(match[4]);
+            month = monthMap[monthName];
+            
+            // Use the end date of the range for registration deadlines
+            day = endDay;
+            
+            console.log('Month-first range pattern - Month:', monthName, 'Start:', startDay, 'End:', endDay, 'Year:', year);
+            
+            if (month && day && year && year >= new Date().getFullYear()) {
+              const date = new Date(Date.UTC(year, month - 1, day));
+              if (!isNaN(date.getTime())) {
+                extractedDate = date.toISOString().split('T')[0];
+                console.log('Successfully parsed month-first range format:', extractedDate);
+                break;
+              }
+            }
+          } else if (i === 2) {
+            // Only process if no emoji date found yet
+            if (foundEmojiDate) continue;
+            
             // Handle date ranges like "8 - 14 July 2025" - use the end date
             const startDay = parseInt(match[1]);
             const endDay = parseInt(match[2]);
@@ -348,7 +395,10 @@ export function TaskPreviewModal({
                 break;
               }
             }
-          } else if (i === 2) {
+          } else if (i === 3) {
+            // Only process if no emoji date found yet
+            if (foundEmojiDate) continue;
+            
             // Handle "19 20 July 2025" format - use the later date
             const firstDay = parseInt(match[1]);
             const secondDay = parseInt(match[2]);
@@ -369,7 +419,9 @@ export function TaskPreviewModal({
                 break;
               }
             }
-          } else if (i === 3) {
+          } else if (i === 4) {
+            // Only process if no emoji date found yet
+            if (foundEmojiDate) continue;
             // Handle "19 July 2025" format
             day = parseInt(match[1]);
             const monthName = match[2].toLowerCase();
@@ -386,7 +438,10 @@ export function TaskPreviewModal({
                 break;
               }
             }
-          } else if (i === 4) {
+          } else if (i === 5) {
+            // Only process if no emoji date found yet
+            if (foundEmojiDate) continue;
+            
             // Handle regular format: "September 7th, 2025"
             const monthName = match[1].toLowerCase();
             day = parseInt(match[2]);
@@ -404,7 +459,10 @@ export function TaskPreviewModal({
                 break;
               }
             }
-          } else if (i === 5 || i === 6) {
+          } else if (i === 6 || i === 7) {
+            // Only process if no emoji date found yet
+            if (foundEmojiDate) continue;
+            
             // Handle full/short month name formats
             const monthName = match[1].toLowerCase();
             day = parseInt(match[2]);
@@ -422,7 +480,9 @@ export function TaskPreviewModal({
                 break;
               }
             }
-          } else if (i === 7) {
+          } else if (i === 8) {
+            // Only process if no emoji date found yet
+            if (foundEmojiDate) continue;
             // YYYY-MM-DD format
             year = parseInt(match[1]);
             month = parseInt(match[2]);
@@ -437,7 +497,10 @@ export function TaskPreviewModal({
                 break;
               }
             }
-          } else if (i === 8) {
+          } else if (i === 9) {
+            // Only process if no emoji date found yet
+            if (foundEmojiDate) continue;
+            
             // DD/MM/YYYY format
             day = parseInt(match[1]);
             month = parseInt(match[2]);
@@ -459,7 +522,8 @@ export function TaskPreviewModal({
         }
       }
       
-      if (extractedDate) break;
+      // If we found an emoji date, break immediately. Otherwise, continue to next pattern.
+      if (foundEmojiDate || extractedDate) break;
     }
 
     // If no date found, set intelligent defaults based on task type
@@ -487,6 +551,8 @@ export function TaskPreviewModal({
     }
 
     console.log('Final extracted date:', extractedDate);
+    console.log('Found emoji date:', foundEmojiDate);
+    console.log('Selected item verification - ID:', item.id, 'Title:', item.title);
     console.log('=== END DATE EXTRACTION DEBUG ===');
     return extractedDate;
   }

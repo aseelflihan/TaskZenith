@@ -78,6 +78,9 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const userKnowledgeItems = knowledgeItems.filter(item => item.userEmail === session.user?.email);
+    const userKnowledgeItems = knowledgeItems
+        .filter(item => item.userEmail === session.user?.email)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // ترتيب الأحدث أولاً
+    
     return NextResponse.json(userKnowledgeItems);
 }

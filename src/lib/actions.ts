@@ -13,12 +13,11 @@ import { addMinutes, format, parse, parseISO, isValid, setHours, setMinutes, sta
 
 const getFlows = async () => {
     const { prioritizeTasks: prioritizeTasksFlow } = await import("@/ai/flows/prioritize-tasks");
-    const { generateProductivityReports: generateProductivityReportsFlow } = await import("@/ai/flows/generate-productivity-reports");
     const { parseNaturalLanguageTasks } = await import("@/ai/flows/parse-natural-language-tasks");
-    return { prioritizeTasksFlow, generateProductivityReportsFlow, parseNaturalLanguageTasks };
+    return { prioritizeTasksFlow, parseNaturalLanguageTasks };
 };
 
-// ... Other functions like getPrioritizedTasks, getProductivityReport remain unchanged ...
+// ... Other functions like getPrioritizedTasks remain unchanged ...
 export async function getPrioritizedTasks(tasks: Task[], context: string): Promise<{ prioritizedTasks?: string[]; reasoning?: string; error?: string }> {
   try {
     const { prioritizeTasksFlow } = await getFlows();
@@ -46,40 +45,6 @@ export async function getPrioritizedTasks(tasks: Task[], context: string): Promi
     return { error: "Failed to prioritize tasks. Please try again." };
   }
 }
-
-export async function getProductivityReport(tasks: Task[]): Promise<{ analysis?: string; recommendations?: string; error?: string }> {
-   try {
-    const { generateProductivityReportsFlow } = await getFlows();
-    const completedSubTasksDetails: string[] = [];
-    tasks.forEach(task => {
-      task.subtasks.forEach(st => {
-        if (st.completed && st.actualEndTime) {
-          completedSubTasksDetails.push(
-            `Subtask: "${st.text}" (from task "${task.text}"), Completed At: ${new Date(st.actualEndTime).toLocaleString()}, Duration: ${st.durationMinutes || 'N/A'} mins.`
-          );
-        }
-      });
-    });
-    
-    const userTasksString = completedSubTasksDetails.join("\\n") || "No subtasks completed yet.";
-    const userScheduleString = "User has a flexible schedule, primarily working during weekdays. Focus on optimizing task batching and minimizing context switching.";
-
-    if (completedSubTasksDetails.length === 0) {
-      return { analysis: "No completed subtasks found to generate a report.", recommendations: "Complete some subtasks to get productivity insights." };
-    }
-    
-    const input = {
-      userTasks: userTasksString,
-      userSchedule: userScheduleString,
-    };
-    const result = await generateProductivityReportsFlow(input);
-    return { analysis: result.analysis, recommendations: result.recommendations };
-  } catch (error) {
-    console.error("Error generating productivity report:", error);
-    return { error: "Failed to generate productivity report. Please try again." };
-  }
-}
-
 
 // ==================================================================
 // *** MODIFIED FUNCTION: generateTasksFromNaturalLanguage ***

@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ListChecks, BarChart3, Bot, Settings, Zap, LogIn, LogOut, UserCircle } from "lucide-react";
+import { ListChecks, Bot, Settings, Zap, LogIn, LogOut, UserCircle } from "lucide-react";
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -34,7 +34,6 @@ import {
 // --- THIS IS THE FIX ---
 const menuItems = [
   { href: "/dashboard", label: "Tasks", icon: ListChecks, requiresAuth: true },
-  { href: "/reports", label: "Productivity Reports", icon: BarChart3, requiresAuth: true },
   { href: "/knowledge-hub", label: "Knowledge Hub", icon: Bot, requiresAuth: true },
 ];
 // ----------------------

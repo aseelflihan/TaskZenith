@@ -1,9 +1,9 @@
 "use client";
-"use client";
 
 import { useState, useEffect } from "react";
 import { KnowledgeCard } from "./KnowledgeCard";
-import { KnowledgeCardSkeleton } from "./KnowledgeCardSkeleton";
+import { KnowledgeCardSkeleton, KnowledgeGridSkeleton } from "./KnowledgeCardSkeleton";
+import { LazyKnowledgeGrid } from "./LazyKnowledgeCard";
 import { useKnowledgeHubStore } from "./useKnowledgeHubStore";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -11,9 +11,33 @@ import { X } from "lucide-react";
 import SearchBarWithFilters from "./SearchBarWithFilters";
 
 export function ContentGrid() {
-  const { items, selectedItem, setSelectedItem, fetchItems, filterTags, toggleFilterTag, clearFilters, searchTerm, setSearchTerm } = useKnowledgeHubStore();
+  const { 
+    items, 
+    selectedItem, 
+    setSelectedItem, 
+    fetchItems, 
+    filterTags, 
+    toggleFilterTag, 
+    clearFilters, 
+    searchTerm, 
+    setSearchTerm,
+    isLoading,
+    isInitialLoad
+  } = useKnowledgeHubStore();
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [isLoading, setIsLoading] = useState(false);
+
+  // DEBUG: Log item selection
+  const handleItemSelect = (item: any) => {
+    console.log('=== ContentGrid Item Selection DEBUG ===');
+    console.log('User clicked on Item ID:', item.id);
+    console.log('User clicked on Item Title:', item.title);
+    console.log('User clicked on Item Summary:', item.summary?.substring(0, 100));
+    console.log('User clicked on Item Tasks:', item.tasks);
+    console.log('Full item object:', JSON.stringify(item, null, 2));
+    console.log('Setting selected item in store...');
+    console.log('=== END DEBUG ===');
+    setSelectedItem(item);
+  };
 
   useEffect(() => {
     fetchItems();
@@ -32,12 +56,19 @@ export function ContentGrid() {
     return matchesSearchTerm && matchesTags;
   });
 
-  if (isLoading) {
+  // Show skeleton loading during initial load or when loading and no items
+  if (isLoading && (isInitialLoad || items.length === 0)) {
     return (
-      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <KnowledgeCardSkeleton key={i} />
-        ))}
+      <div className="h-full flex flex-col p-4">
+        <SearchBarWithFilters
+          view={view}
+          setView={setView}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+        />
+        <div className="flex-1 mt-4">
+          <KnowledgeGridSkeleton count={8} />
+        </div>
       </div>
     );
   }
@@ -64,22 +95,29 @@ export function ContentGrid() {
           <Button variant="ghost" size="sm" onClick={clearFilters}>Clear all</Button>
         </div>
       )}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      
+      <div className="flex-1 mt-4">
         {filteredItems.length > 0 ? (
-            filteredItems.map((item: any) => (
-            <KnowledgeCard
-              item={item}
-              key={item.id}
-              isSelected={selectedItem?.id === item.id}
-              onSelect={() => setSelectedItem(item)}
-            />
-          ))
-        ) : (
-            <div className="col-span-full text-center text-muted-foreground mt-8">
-                <p className="text-lg">No items found</p>
-                <p className="text-sm mt-2">Try adjusting your search terms or filters</p>
-            </div>
-        )}
+          <LazyKnowledgeGrid
+            items={filteredItems}
+            selectedItem={selectedItem}
+            onItemSelect={handleItemSelect}
+            initialLoad={4}
+            loadIncrement={4}
+          />
+        ) : !isLoading && items.length > 0 ? (
+          // Show "No items found" only when we have items but none match the filter
+          <div className="text-center text-muted-foreground mt-8">
+            <p className="text-lg">No items found</p>
+            <p className="text-sm mt-2">Try adjusting your search terms or filters</p>
+          </div>
+        ) : !isLoading && items.length === 0 ? (
+          // Show "No data" when there are genuinely no items after loading
+          <div className="text-center text-muted-foreground mt-8">
+            <p className="text-lg">📚 No knowledge items yet</p>
+            <p className="text-sm mt-2">Upload your first document or add content to get started</p>
+          </div>
+        ) : null}
       </div>
     </div>
   );

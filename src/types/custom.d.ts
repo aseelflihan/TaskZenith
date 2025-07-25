@@ -29,6 +29,8 @@ export interface KnowledgeHubState {
   searchTerm: string;
   filterTags: string[];
   allTags: string[];
+  isLoading: boolean;
+  isInitialLoad: boolean;
   setItems: (items: KnowledgeItem[]) => void;
   addItem: (item: KnowledgeItem) => void;
   setSelectedItem: (item: KnowledgeItem | null) => void;
@@ -36,6 +38,7 @@ export interface KnowledgeHubState {
   toggleFilterTag: (tag: string) => void;
   clearFilters: () => void;
   fetchItems: () => Promise<void>;
+  setLoading: (loading: boolean) => void;
 }
 
 export interface SelectedContentState {

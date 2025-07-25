@@ -8,17 +8,43 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useKnowledgeHubStore } from "./useKnowledgeHubStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { addKnowledgeHubTasksAction } from "@/lib/actions/knowledge-hub.actions";
 import { TaskPreviewModal } from "./TaskPreviewModal";
 import { SmartTaskGenerator } from "./SmartTaskGenerator";
+import { AIInsightPanelSkeleton } from "./AIInsightPanelSkeleton";
 
 export function AIInsightPanel() {
   const { items, selectedItem, toggleFilterTag, filterTags } = useKnowledgeHubStore();
   const { toast } = useToast();
   const [isAddingTasks, setIsAddingTasks] = useState(false);
   const [showTaskPreview, setShowTaskPreview] = useState(false);
+  const [isLoadingPanel, setIsLoadingPanel] = useState(false);
+
+  // DEBUG: Log selected item changes
+  console.log('=== AIInsightPanel RECEIVING DEBUG ===');
+  console.log('AIInsightPanel received Item ID:', selectedItem?.id);
+  console.log('AIInsightPanel received Item Title:', selectedItem?.title);
+  console.log('AIInsightPanel received Item Summary:', selectedItem?.summary?.substring(0, 100));
+  console.log('AIInsightPanel received Item Tasks:', selectedItem?.tasks);
+  if (selectedItem) {
+    console.log('Full received item:', JSON.stringify(selectedItem, null, 2));
+  }
+  console.log('=== END RECEIVING DEBUG ===');
+
+  // Simulate loading when switching between items
+  useEffect(() => {
+    if (selectedItem) {
+      setIsLoadingPanel(true);
+      const timer = setTimeout(() => {
+        setIsLoadingPanel(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setIsLoadingPanel(false);
+    }
+  }, [selectedItem?.id]);
 
   const allTags = [...new Set(items.flatMap((item: any) => item.tags))].sort();
   
@@ -95,7 +121,18 @@ export function AIInsightPanel() {
 
   return (
     <AnimatePresence>
-      {selectedItem && (
+      {selectedItem && isLoadingPanel && (
+        <motion.div
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 50 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="w-full h-full"
+        >
+          <AIInsightPanelSkeleton />
+        </motion.div>
+      )}
+      {selectedItem && !isLoadingPanel && (
         <motion.div
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}

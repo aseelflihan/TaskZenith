@@ -30,6 +30,22 @@ export function SmartTaskGenerator({ knowledgeItem, onTasksAdded }: SmartTaskGen
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
 
+  // DEBUG: Log received knowledge item
+  console.log('=== SmartTaskGenerator RECEIVED ITEM DEBUG ===');
+  console.log('SmartTaskGenerator received Item ID:', knowledgeItem.id);
+  console.log('SmartTaskGenerator received Item Title:', knowledgeItem.title);
+  console.log('SmartTaskGenerator received Item Summary:', knowledgeItem.summary?.substring(0, 100));
+  console.log('SmartTaskGenerator received Item Tasks:', knowledgeItem.tasks);
+  console.log('=== END SmartTaskGenerator DEBUG ===');
+
+  // DEBUG: Log component initialization
+  console.log('=== SmartTaskGenerator DEBUG ===');
+  console.log('KnowledgeItem ID:', knowledgeItem.id);
+  console.log('KnowledgeItem Title:', knowledgeItem.title);
+  console.log('KnowledgeItem Tasks:', knowledgeItem.tasks);
+  console.log('Initial Generated Tasks:', generatedTasks);
+  console.log('=== END DEBUG ===');
+
   // Analyze content type to customize tasks
   const analyzeContent = () => {
     const content = `${knowledgeItem.title} ${knowledgeItem.summary} ${knowledgeItem.tags.join(' ')}`.toLowerCase();
