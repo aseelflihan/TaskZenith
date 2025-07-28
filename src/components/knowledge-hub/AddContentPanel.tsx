@@ -5,55 +5,94 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { getFileExtension } from "@/lib/file-utils";
 import { Loader2, Plus, Upload, FileText, Image as ImageIcon, FileVideo, Table, Monitor, Eye, Sparkles } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Lottie from "lottie-react";
 import animationData from "@/assets/animations/Animation_loading.json";
 import { useKnowledgeHubStore } from "./useKnowledgeHubStore";
 import { KnowledgeItem } from "@/lib/types";
 import Image from "next/image";
 
+interface UploadableFile {
+  id: string;
+  file: File;
+  status: 'pending' | 'uploading' | 'success' | 'error' | 'cancelled';
+  progress: number;
+  error?: string;
+  controller: AbortController;
+}
+
 export function AddContentPanel() {
   const [content, setContent] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<UploadableFile[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addItem, setSelectedItem } = useKnowledgeHubStore();
 
+  const isUploading = uploadQueue.some(item => item.status === 'uploading');
+
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => setError(null), 8000); // Hide error after 8 seconds
+      const timer = setTimeout(() => setError(null), 8000);
       return () => clearTimeout(timer);
     }
   }, [error]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setContent(""); // Clear text content when file is selected
-      setError(null); // Clear error on new file selection
-      
-      // Generate image preview for image files
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setImagePreview(e.target?.result as string);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        setImagePreview(null);
-      }
+    const files = event.target.files;
+    if (files) {
+      const newUploads: UploadableFile[] = Array.from(files).map(file => ({
+        id: `${file.name}-${file.lastModified}-${file.size}-${Math.random()}`,
+        file,
+        status: 'pending',
+        progress: 0,
+        controller: new AbortController(),
+      }));
+      setUploadQueue(prevQueue => [...prevQueue, ...newUploads]);
+      setContent("");
+      setError(null);
     }
   };
 
-  const handleClearFile = () => {
-    setSelectedFile(null);
-    setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+  const handleCancelUpload = (idToCancel: string) => {
+    setUploadQueue(prevQueue =>
+      prevQueue.map(item => {
+        if (item.id === idToCancel) {
+          if (item.status === 'uploading') {
+            item.controller.abort();
+          }
+          return { ...item, status: 'cancelled' };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleClearCompleted = () => {
+    setUploadQueue(prevQueue => {
+        const newQueue = prevQueue.filter(item => item.status === 'uploading' || item.status === 'pending');
+        // If the queue is now empty, reset the file input to allow re-selection of the same files
+        if (newQueue.length === 0 && fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+        return newQueue;
+    });
+  };
+
+  const handleRetryUpload = (idToRetry: string) => {
+    setUploadQueue(prevQueue =>
+      prevQueue.map(item => {
+        if (item.id === idToRetry) {
+          return {
+            ...item,
+            status: 'pending',
+            progress: 0,
+            error: undefined,
+            controller: new AbortController(),
+          };
+        }
+        return item;
+      })
+    );
   };
 
   const getFileIcon = (file: File) => {
@@ -72,65 +111,76 @@ export function AddContentPanel() {
     return <FileText className="h-4 w-4" />;
   };
 
-  const handleSubmit = async () => {
-    if (!content.trim() && !selectedFile) return;
-    setIsProcessing(true);
-    setError(null);
-    
+  const uploadFile = async (item: UploadableFile) => {
+    setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'uploading' } : i));
+
     try {
-      let response;
-      
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        response = await fetch('/api/knowledge/upload', {
-          method: 'POST',
-          body: formData,
-        });
-      } else {
-        response = await fetch('/api/knowledge', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content }),
-        });
-      }
+      const formData = new FormData();
+      formData.append('file', item.file);
+
+      const response = await fetch('/api/knowledge/upload', {
+        method: 'POST',
+        body: formData,
+        signal: item.controller.signal,
+      });
 
       if (response.ok) {
         const newItem = await response.json();
         addItem(newItem as KnowledgeItem);
         setSelectedItem(newItem as KnowledgeItem);
-        setContent("");
-        handleClearFile();
+        setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'success', progress: 100 } : i));
       } else {
         const errorData = await response.json();
         const errorMessage = errorData.details || errorData.error || "An unknown error occurred.";
-        setError(errorMessage);
-        console.error("Failed to add item:", errorMessage);
+        throw new Error(errorMessage);
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred.";
-      setError(errorMessage);
-      console.error("Error submitting item:", errorMessage);
-    } finally {
-      setIsProcessing(false);
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log(`Upload cancelled for ${item.file.name}`);
+        // Status is already set to 'cancelled' by handleCancelUpload
+      } else {
+        const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred.";
+        console.error(`Error uploading ${item.file.name}:`, errorMessage);
+        setUploadQueue(prev => prev.map(i => i.id === item.id ? { ...i, status: 'error', error: errorMessage } : i));
+      }
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (content.trim()) {
+        // Handle text submission
+        const response = await fetch('/api/knowledge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content }),
+        });
+        if (response.ok) {
+            const newItem = await response.json();
+            addItem(newItem as KnowledgeItem);
+            setSelectedItem(newItem as KnowledgeItem);
+            setContent("");
+        } else {
+            const errorData = await response.json();
+            setError(errorData.details || errorData.error || "An unknown error occurred.");
+        }
+    } else {
+        // Handle file submissions
+        const pendingUploads = uploadQueue.filter(item => item.status === 'pending');
+        const uploadPromises = pendingUploads.map(item => uploadFile(item));
+        await Promise.allSettled(uploadPromises);
     }
   };
 
   const getProcessingButtonText = () => {
-    if (!selectedFile) return "Analyzing...";
-    
-    const fileType = getFileExtension(selectedFile.name, selectedFile.type).toUpperCase();
-
-    if (selectedFile.type.startsWith('image/')) {
-      return `Scanning...`;
+    const uploadingCount = uploadQueue.filter(item => item.status === 'uploading').length;
+    if (uploadingCount > 0) {
+        return `Uploading ${uploadingCount} file(s)...`;
     }
-    if (fileType === 'PDF') {
-      return `Reading PDF...`;
+    const pendingCount = uploadQueue.filter(item => item.status === 'pending').length;
+    if (pendingCount > 0) {
+        return `Upload ${pendingCount} file(s)`;
     }
-    if (fileType === 'DOCX' || fileType === 'DOC') {
-      return `Reading Doc...`;
-    }
-    return "Processing...";
+    return "Add to Hub";
   };
 
   return (
@@ -142,68 +192,50 @@ export function AddContentPanel() {
         <Input
           ref={fileInputRef}
           type="file"
+          multiple
           onChange={handleFileSelect}
           accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.mp4,.mov,.avi,.xlsx,.xls,.pptx,.ppt,.csv"
           className="hidden"
-          disabled={isProcessing}
+          disabled={isUploading}
         />
         
-        {selectedFile ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                {getFileIcon(selectedFile)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{selectedFile.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {(selectedFile.size / 1024).toFixed(1)} KB • {getFileExtension(selectedFile.name, selectedFile.type).toUpperCase()}
-                </p>
-                {selectedFile.type.startsWith('image/') && (
-                  <div className="flex items-center gap-1 mt-1">
-                    <Eye className="h-3 w-3 text-blue-500" />
-                    <span className="text-xs text-blue-600 dark:text-blue-400">
-                      Ready for OCR text extraction
-                    </span>
-                  </div>
+        {uploadQueue.length > 0 ? (
+          <div className="space-y-2">
+            {uploadQueue.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 p-2 border rounded-lg bg-muted/50">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted">
+                  {getFileIcon(item.file)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{item.file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(item.file.size / 1024).toFixed(1)} KB - <span className={`font-semibold ${
+                      item.status === 'success' ? 'text-green-500' :
+                      item.status === 'error' ? 'text-red-500' :
+                      item.status === 'cancelled' ? 'text-yellow-500' :
+                      'text-muted-foreground'
+                    }`}>{item.status}</span>
+                  </p>
+                  {item.status === 'uploading' && (
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-700 mt-1">
+                        <div className="bg-blue-600 h-1.5 rounded-full" style={{width: `${item.progress}%`}}></div>
+                    </div>
+                  )}
+                  {item.status === 'error' && <p className="text-xs text-red-500 truncate">{item.error}</p>}
+                </div>
+                {item.status === 'pending' && (
+                    <Button variant="ghost" size="sm" onClick={() => handleCancelUpload(item.id)} disabled={isUploading} className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive">✕</Button>
+                )}
+                {item.status === 'uploading' && (
+                    <Button variant="ghost" size="sm" onClick={() => handleCancelUpload(item.id)} className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive">✕</Button>
+                )}
+                 {item.status === 'error' && (
+                    <Button variant="ghost" size="sm" onClick={() => handleRetryUpload(item.id)} disabled={isUploading} className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary">↻</Button>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearFile}
-                disabled={isProcessing}
-                className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
-              >
-                ✕
-              </Button>
-            </div>
-            
-            {/* Image Preview */}
-            {imagePreview && (
-              <div className="ocr-preview-container p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Image Preview</span>
-                  </div>
-                  <div className="ocr-status-badge">
-                    <Eye className="h-3 w-3" />
-                    OCR Ready
-                  </div>
-                </div>
-                <div className="relative w-full h-48 rounded-md overflow-hidden bg-muted/50">
-                  <Image
-                    src={imagePreview}
-                    alt="Image preview"
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground text-center">
-                  Text will be automatically extracted using AI-powered OCR
-                </div>
-              </div>
+            ))}
+             {(uploadQueue.some(i => i.status === 'success' || i.status === 'error' || i.status === 'cancelled')) && (
+                <Button onClick={handleClearCompleted} variant="link" size="sm" className="w-full">Clear completed</Button>
             )}
           </div>
         ) : (
@@ -211,7 +243,7 @@ export function AddContentPanel() {
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isProcessing}
+              disabled={isUploading}
               className="w-full h-auto py-4 flex flex-col gap-2 border-2 border-dashed hover:border-primary/50 transition-colors"
             >
               <Upload className="h-6 w-6 text-muted-foreground" />
@@ -260,7 +292,7 @@ export function AddContentPanel() {
           onChange={(e) => setContent(e.target.value)}
           className="bg-transparent resize-none border-2 border-dashed hover:border-primary/50 transition-colors"
           rows={5}
-          disabled={isProcessing || !!selectedFile}
+          disabled={isUploading || uploadQueue.length > 0}
         />
       </div>
 
@@ -271,23 +303,13 @@ export function AddContentPanel() {
         </div>
       )}
       
-      {/* Processing Status for Images */}
-      {isProcessing && selectedFile?.type.startsWith('image/') && (
-        <div className="processing-indicator mb-4">
-          <Loader2 className="spinner" />
-          <span className="text-sm font-medium">
-            Extracting text from image using AI-powered OCR...
-          </span>
-        </div>
-      )}
-      
       <Button
         onClick={handleSubmit}
-        disabled={isProcessing || (!content.trim() && !selectedFile)}
+        disabled={isUploading || (!content.trim() && uploadQueue.filter(i => i.status === 'pending').length === 0)}
         className="mt-4 w-full h-12 text-base font-medium text-white bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-300 ease-in-out"
         size="lg"
       >
-        {isProcessing ? (
+        {isUploading ? (
           <div className="flex items-center justify-center">
             <Lottie
               animationData={animationData}
@@ -300,7 +322,7 @@ export function AddContentPanel() {
         ) : (
           <>
             <Sparkles className="mr-2 h-5 w-5" />
-            Add to Hub
+            {getProcessingButtonText()}
           </>
         )}
       </Button>

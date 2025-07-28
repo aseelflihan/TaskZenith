@@ -46,6 +46,7 @@ export interface KnowledgeItem {
   originalContent: string;
   createdAt: string;
   userEmail: string;
+  date?: string | null;
   // File-specific properties
   fileName?: string;
   fileType?: string;

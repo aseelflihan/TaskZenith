@@ -6,7 +6,7 @@ import { KnowledgeItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Trash2, ExternalLink, FileText, Download, Eye } from "lucide-react";
+import { Trash2, ExternalLink, FileText, Download, Eye, Calendar as CalendarIcon } from "lucide-react";
 import { useKnowledgeHubStore } from "./useKnowledgeHubStore";
 import { formatFileSize, getFileIcon, getFileExtension } from "@/lib/file-utils";
 import { useState } from "react";
@@ -318,6 +318,11 @@ export function KnowledgeCard({ item, isSelected, onSelect }: KnowledgeCardProps
 
           {/* Date and Source */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            {item.date && (
+              <span className="flex items-center gap-1 font-semibold text-primary">
+                <CalendarIcon className="h-3 w-3" /> {new Date(item.date).toLocaleDateString()}
+              </span>
+            )}
             <span className="flex items-center gap-1">
               📅 {new Date(item.createdAt).toLocaleDateString()}
             </span>

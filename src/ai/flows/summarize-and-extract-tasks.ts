@@ -8,6 +8,7 @@ const outputSchema = z.object({
     tldr: z.string().describe("A very short, one-sentence summary (TL;DR)."),
     tags: z.array(z.string()).describe("An array of 3-5 relevant keywords or tags."),
     tasks: z.array(z.object({ text: z.string() })).describe("An array of actionable tasks extracted from the content."),
+    date: z.string().nullable().optional().describe("The primary event date found in the text, formatted as YYYY-MM-DD. Null if no specific date is found."),
 });
 
 const prompt = ai.definePrompt({
@@ -21,6 +22,8 @@ const prompt = ai.definePrompt({
 3. **tldr**: Provide a very short, one-sentence summary (TL;DR) that captures the absolute essence
 4. **tags**: Generate 3-5 relevant keywords or tags that best describe the content
 5. **tasks**: Extract any actionable items, to-dos, or action points mentioned in the content
+
+6. **date**: Find the main event date in the content. Format it as YYYY-MM-DD. If no specific date is mentioned, return null. Do not invent a date or use a deadline.
 
 Important: The summary should be comprehensive and include all major points from the content, not just a brief description.
 
@@ -130,6 +133,7 @@ function createFallbackAnalysis(content: string) {
     summary: `Document processed successfully. ${summary}`,
     tldr: content.length > 100 ? `Summary of uploaded content.` : content.substring(0, 50),
     tags: tags.length > 0 ? tags : ['document', 'upload', 'content'],
-    tasks: extractedTasks.length > 0 ? extractedTasks.slice(0, 10) : [{ text: 'Review uploaded content' }]
+    tasks: extractedTasks.length > 0 ? extractedTasks.slice(0, 10) : [{ text: 'Review uploaded content' }],
+    date: null
   };
 }
