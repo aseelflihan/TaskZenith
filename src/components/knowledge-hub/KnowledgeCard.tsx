@@ -102,17 +102,17 @@ export function KnowledgeCard({ item, isSelected, onSelect }: KnowledgeCardProps
 
   return (
     <div className="relative group">
-      {/* إطار الإضاءة الدوار الخارجي */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-primary via-accent via-secondary via-destructive to-primary rounded-xl animate-gradient-spin opacity-75 blur-sm"></div>
+      {/* إطار الإضاءة الأزرق الثابت */}
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl blur-sm opacity-75 group-hover:opacity-95 transition duration-300"></div>
       
       {/* البطاقة الرئيسية */}
       <Card
         className={cn(
           "relative cursor-pointer transition-all duration-300 rounded-xl",
           "shadow-lg h-[520px] flex flex-col overflow-hidden bg-background",
-          "animate-radial-glow border border-border/20", // إضاءة إشعاعية ثابتة
+          "border border-transparent", // Use transparent border to maintain layout
           isPressed && "animate-press-down", // تأثير الضغط
-          isSelected && "ring-2 ring-primary shadow-primary/25"
+          isSelected && "ring-2 ring-offset-2 ring-offset-background ring-white" // Clearer selection ring
         )}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
@@ -317,18 +317,15 @@ export function KnowledgeCard({ item, isSelected, onSelect }: KnowledgeCardProps
           </div>
 
           {/* Date and Source */}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            {item.date && (
-              <span className="flex items-center gap-1 font-semibold text-primary">
-                <CalendarIcon className="h-3 w-3" /> {new Date(item.date).toLocaleDateString()}
+          <div className="flex items-center justify-end gap-3 text-xs text-muted-foreground">
+              {item.date && (
+                <span className="flex items-center gap-1 font-semibold text-primary flex-shrink-0 whitespace-nowrap">
+                  <CalendarIcon className="h-3 w-3" /> {new Date(item.date).toLocaleDateString()}
+                </span>
+              )}
+              <span className="truncate max-w-20 font-medium flex-shrink-0">
+                {item.source}
               </span>
-            )}
-            <span className="flex items-center gap-1">
-              📅 {new Date(item.createdAt).toLocaleDateString()}
-            </span>
-            <span className="truncate max-w-20 font-medium">
-              {item.source}
-            </span>
           </div>
         </div>
       </div>
