@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,8 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Edit3, Plus, Trash2, Check, X, Loader2 } from "lucide-react";
+import { Calendar, Clock, Edit3, Plus, Trash2, Check, X, Loader2, CalendarPlus } from "lucide-react";
 import { KnowledgeItem } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
 
 interface TaskPreview {
   id: string;
@@ -49,6 +51,12 @@ export function TaskPreviewModal({
   onConfirm,
   isLoading = false 
 }: TaskPreviewModalProps) {
+  const { data: session } = useSession();
+  const { toast } = useToast();
+  const [isAddingToCalendar, setIsAddingToCalendar] = useState<string | null>(null);
+  const [addedToCalendar, setAddedToCalendar] = useState<string[]>([]);
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
+
   const [tasks, setTasks] = useState<TaskPreview[]>(() => {
     console.log('=== TaskPreviewModal INITIALIZATION DEBUG ===');
     console.log('TaskPreviewModal initializing with knowledgeItem ID:', knowledgeItem.id);
@@ -300,6 +308,158 @@ export function TaskPreviewModal({
     ));
   };
 
+  const handleAddToCalendar = async (task: TaskPreview) => {
+    if (!task.deadline) {
+      toast({ 
+        title: "No Date", 
+        description: "Please set a date for the task first.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (!session?.user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in with Google to use calendar features.",
+        variant: "destructive"
+      });
+      signIn('google');
+      return;
+    }
+
+    console.log('🗓️ Adding task to calendar:', {
+      taskId: task.id,
+      text: task.text,
+      deadline: task.deadline,
+      duration: task.durationMinutes,
+      userEmail: session.user.email
+    });
+
+    setIsAddingToCalendar(task.id);
+    
+    try {
+      // Create proper datetime objects
+      const deadlineDate = new Date(task.deadline);
+      
+      // Check if date is valid
+      if (isNaN(deadlineDate.getTime())) {
+        throw new Error('Invalid date format');
+      }
+      
+      // Set to 9:00 AM local time
+      const startTime = new Date(deadlineDate);
+      startTime.setHours(9, 0, 0, 0);
+      
+      // End time based on duration
+      const endTime = new Date(startTime.getTime() + task.durationMinutes * 60000);
+
+      console.log('📅 Event timing:', {
+        originalDate: task.deadline,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        duration: task.durationMinutes
+      });
+
+      const requestBody = {
+        title: task.text,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        notes: task.notes || `Task from Knowledge Hub: ${knowledgeItem.title}`
+      };
+
+      console.log('🚀 Sending calendar request:', requestBody);
+
+      const response = await fetch('/api/calendar/create-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      const responseData = await response.json();
+      console.log('📨 Calendar API response:', {
+        ok: response.ok,
+        status: response.status,
+        data: responseData
+      });
+
+      if (!response.ok) {
+        // Handle specific error cases
+        if (response.status === 401 || responseData.action === 'reauth') {
+          toast({
+            title: "Authentication Required",
+            description: responseData.details || "Please re-connect your Google account to continue.",
+            variant: "destructive",
+          });
+          // Trigger Google sign-in with calendar scope
+          signIn('google', { 
+            callbackUrl: window.location.href,
+            redirect: false 
+          });
+          return;
+        }
+
+        if (response.status === 403) {
+          toast({
+            title: "Calendar Access Denied",
+            description: responseData.details || "Please ensure Google Calendar API is enabled and you have granted calendar permissions.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        throw new Error(responseData.details || `Calendar API Error (${response.status})`);
+      }
+
+      console.log('✅ Calendar event created successfully:', responseData);
+
+      toast({
+        title: "✅ Event Added to Calendar",
+        description: `"${task.text}" has been added to your Google Calendar.`,
+      });
+      
+      setAddedToCalendar(prev => [...prev, task.id]);
+
+    } catch (error) {
+      console.error('❌ Calendar addition failed:', error);
+      
+      toast({
+        title: "Error Adding to Calendar",
+        description: error instanceof Error ? error.message : "An unknown error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingToCalendar(null);
+    }
+  };
+
+  const runDiagnostic = async () => {
+    try {
+      const response = await fetch('/api/calendar/diagnostic');
+      const diagnostic = await response.json();
+      
+      console.log('🔍 Calendar Diagnostic Results:', diagnostic);
+      
+      const hasIssues = !diagnostic.session.hasAccessToken || !diagnostic.apiTest?.success;
+      
+      toast({
+        title: hasIssues ? "⚠️ Calendar Issues Found" : "✅ Calendar Ready",
+        description: hasIssues 
+          ? "Check console for diagnostic details" 
+          : "Google Calendar integration is working properly",
+        variant: hasIssues ? "destructive" : "default"
+      });
+      
+    } catch (error) {
+      console.error('Diagnostic failed:', error);
+      toast({
+        title: "Diagnostic Failed",
+        description: "Could not run calendar diagnostic",
+        variant: "destructive"
+      });
+    }
+  };
+
   const selectedTasks = tasks.filter(task => task.selected);
   const hasSelection = selectedTasks.length > 0;
 
@@ -316,9 +476,21 @@ export function TaskPreviewModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Check className="h-5 w-5 text-green-600" />
-            Review Suggested Tasks
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Check className="h-5 w-5 text-green-600" />
+              Review Suggested Tasks
+            </div>
+            {process.env.NODE_ENV === 'development' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={runDiagnostic}
+                className="text-xs"
+              >
+                🔍 Test Calendar
+              </Button>
+            )}
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
             Review and edit tasks before adding them to your main task list
@@ -488,6 +660,40 @@ export function TaskPreviewModal({
                             className="h-8"
                           />
                         </div>
+                      </div>
+                    )}
+                    {/* Google Calendar Button */}
+                    {task.selected && task.deadline && session?.user && (
+                      <div className="flex items-center justify-end gap-2 mt-2">
+                        {addedToCalendar.includes(task.id) ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled
+                            className="text-xs text-green-600 border-green-500 hover:bg-green-50"
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            Added
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAddToCalendar(task)}
+                            disabled={isAddingToCalendar === task.id}
+                            className="text-xs"
+                          >
+                            {isAddingToCalendar === task.id ? (
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            ) : (
+                              <CalendarPlus className="h-3 w-3 mr-1" />
+                            )}
+                            {isAddingToCalendar === task.id ? 'Adding...' : 'Add to Google Calendar'}
+                          </Button>
+                        )}
+                        <Button variant="link" size="sm" className="text-xs h-auto p-0 text-muted-foreground" onClick={() => signOut()}>
+                          (Switch Account)
+                        </Button>
                       </div>
                     )}
                   </div>
